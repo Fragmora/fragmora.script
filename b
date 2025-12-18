@@ -1,9 +1,4 @@
 if game and game.GetService then
-    -- QUEUE_ON_TELEPORT SICHER ENTFERNEN/DEAKTIVIEREN
-    -- if game.PlaceId ~= 17625359962 then
-    --     queue_on_teleport("loadstring(game:HttpGet('https://darkx-script.com/script'))()")
-    -- end;
-
     (function()
         -- SICHERE SERVICE-ABFRAGE
         local httpService
