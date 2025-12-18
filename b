@@ -30,58 +30,58 @@ if game and game.GetService then
         local vu4 = _validating or false
         local vu5 = _cooldownAt or 0
 
-local function v9(pu6)
-    local v7, v8 = pcall(function()
-        -- SICHERE HTTP ABFRAGE
-        local httpSuccess, content = pcall(function()
-            if game.HttpGet then
-                return game:HttpGet(pu6)
-            elseif httpService and httpService.GetAsync then
-                return httpService:GetAsync(pu6, true)
-            else
-                error("Keine HTTP Methode")
+        local function v9(pu6)
+            local v7, v8 = pcall(function()
+                -- SICHERE HTTP ABFRAGE
+                local httpSuccess, content = pcall(function()
+                    if game.HttpGet then
+                        return game:HttpGet(pu6)
+                    elseif httpService and httpService.GetAsync then
+                        return httpService:GetAsync(pu6, true)
+                    else
+                        error("Keine HTTP Methode")
+                    end
+                end)
+                
+                if not httpSuccess or not content then
+                    return nil, "HTTP Fehler"
+                end
+                
+                -- SICHERE LOAD FUNKTION
+                if loadstring then
+                    return loadstring(content)()
+                elseif load then
+                    return load(content)()
+                else
+                    error("Keine load Funktion")
+                end
+            end)
+            
+            if v7 then
+                return v8
             end
+            warn("Failed to load script from: " .. pu6 .. " Error: " .. tostring(v8))
+            return nil
+        end
+        
+        local vu10
+        -- SICHERE UserInputService ABFRAGE
+        local isTouch = false
+        local uisSuccess, uis = pcall(function()
+            return game:GetService("UserInputService")
         end)
-        
-        if not httpSuccess or not content then
-            return nil, "HTTP Fehler"
+        if uisSuccess and uis then
+            local touchSuccess, touchResult = pcall(function()
+                return uis.TouchEnabled
+            end)
+            isTouch = touchSuccess and touchResult
         end
-        
-        -- SICHERE LOAD FUNKTION
-        if loadstring then
-            return loadstring(content)()
-        elseif load then
-            return load(content)()
-        else
-            error("Keine load Funktion")
-        end
-    end)
-    
-    if v7 then
-        return v8
-    end
-    warn("Failed to load script from: " .. pu6 .. " Error: " .. tostring(v8))
-    return nil
-end
-        
-local vu10
--- SICHERE UserInputService ABFRAGE
-local isTouch = false
-local uisSuccess, uis = pcall(function()
-    return game:GetService("UserInputService")
-end)
-if uisSuccess and uis then
-    local touchSuccess, touchResult = pcall(function()
-        return uis.TouchEnabled
-    end)
-    isTouch = touchSuccess and touchResult
-end
 
-if isTouch then
-    vu10 = v9("https://raw.githubusercontent.com/Merdooon/Orion-Library-Roblox-PE/refs/heads/main/i")
-else
-    vu10 = v9("https://raw.githubusercontent.com/Merdooon/orionlib_desktop/refs/heads/main/main")
-end
+        if isTouch then
+            vu10 = v9("https://raw.githubusercontent.com/Merdooon/Orion-Library-Roblox-PE/refs/heads/main/i")
+        else
+            vu10 = v9("https://raw.githubusercontent.com/Merdooon/orionlib_desktop/refs/heads/main/main")
+        end
         
         if not vu10 then
             warn("OrionLib failed to load. Script cannot continue.")
@@ -98,6 +98,34 @@ end
                 IntroText = "Dark X"
             })
         end)
+        
+        if not success or not v11 then
+            warn("Failed to create window:", v11)
+            return
+        end
+        
+        local vu12 = "discord.gg/QSrUSJ9wZk"
+        local vu13 = game.PlaceId ~= 7711635737 and (game.PlaceId ~= 5104202731 and (game.PlaceId ~= 8267733039 and (game.PlaceId ~= 17625359962 and (game.PlaceId ~= 116495829188952 and (game.PlaceId ~= 126884695634066 and "https://link-hub.net/1265055/emergency-hamburg-script1" or "https://workink.net/20cV/jyyhfm8i") or "https://workink.net/20cV/ra38awgv") or "https://workink.net/20cV/aezxxnun") or "https://workink.net/20cV/m5wr6a3g") or "https://workink.net/20cV/i82bjbkm") or "https://workink.net/20cV/uinuulq1"
+        
+        local function vu16(p14, p15)
+            vu10:MakeNotification({
+                Name = p14,
+                Content = p15,
+                Image = "rbxassetid://4483345998",
+                Time = 10
+            })
+        end
+        
+        local function vu17()
+            vu10:Destroy()
+            vu10 = nil
+        end
+        
+        -- Hier kommt der REST des Originalcodes (vu544 usw.)
+        -- Füge hier den gesamten Rest deines Codes ein
+        
+    end)()  -- DIESE KLAMMERN SIND WICHTIG!
+end
         
         if not success or not v11 then
             warn("Failed to create window:", v11)
