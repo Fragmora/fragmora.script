@@ -1,7 +1,7 @@
-local Orion = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
+local Orion = loadstring(game:HttpGet("https://raw.githubusercontent.com/Fragmora/fragmora.script/refs/heads/main/orion.lua"))()
 
 local Window = Orion:MakeWindow({
-    Name = "Fragmora V2.0 | Emergency Hamburg",
+    Name = "Fragmora V0.2.1 | Emergency Hamburg",
     ConfigFolder = "Fragmora",
     IntroEnabled = true,
     IntroText = "Fragmora Loading...",
@@ -12,7 +12,6 @@ local Window = Orion:MakeWindow({
     Icon = "rbxassetid://7733674079"
 })
 
--- OPTIMIERTE VARIABLEN
 local Players = game:GetService("Players")
 local ServerScriptService = game:GetService("ServerScriptService")
 local RunService = game:GetService("RunService")
@@ -29,9 +28,8 @@ local CFrame_new = CFrame.new
 local Vector2_new = Vector2.new
 local Vector3_new = Vector3.new
 
--- ============================================
--- TAB 1: SILENT AIM
--- ============================================
+-- silent aim
+
 local tab1 = Window:MakeTab({
     Name = "Silent Aim",
     Icon = "rbxassetid://7733674079"
