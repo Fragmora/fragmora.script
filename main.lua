@@ -1,4 +1,4 @@
-local Orion = loadstring(game:HttpGet("https://raw.githubusercontent.com/Fragmora/fragmora.script/refs/heads/main/orion.lua"))()
+local Orion = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
 
 local Window = Orion:MakeWindow({
     Name = "Fragmora V2.0 | Emergency Hamburg",
