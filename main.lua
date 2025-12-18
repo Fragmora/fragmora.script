@@ -93,7 +93,7 @@ local function getClosestTargetSilent()
             if ignoreDead then
                 local humanoid = plr.Character:FindFirstChild("Humanoid")
                 if humanoid and humanoid.Health <= 0 then
-                    continue -- Hier wurde das goto entfernt
+                    goto continue_label
                 end
             end
             
