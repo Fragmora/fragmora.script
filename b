@@ -129,6 +129,137 @@ if game and game.GetService then
             vu10 = nil
         end
         
+if game and game.GetService then
+    -- QUEUE_ON_TELEPORT SICHER ENTFERNEN/DEAKTIVIEREN
+    -- if game.PlaceId ~= 17625359962 then
+    --     queue_on_teleport("loadstring(game:HttpGet('https://darkx-script.com/script'))()")
+    -- end;
+
+    (function()
+        -- SICHERE SERVICE-ABFRAGE
+        local httpService
+        local success1, result1 = pcall(function()
+            return game:GetService("HttpService")
+        end)
+        if success1 then
+            httpService = result1
+        end
+
+        local v1
+        local success2, result2 = pcall(function()
+            return game:GetService("Players")
+        end)
+        if success2 then
+            v1 = result2
+        else
+            warn("Players service nicht verfügbar")
+            return
+        end
+        
+        local vu2 = v1.LocalPlayer
+        if not vu2 then
+            warn("LocalPlayer nicht verfügbar")
+            return
+        end
+
+        local vu3 = game:GetService("StarterGui")
+        local vu4 = _validating or false
+        local vu5 = _cooldownAt or 0
+
+        -- KORRIGIERTE v9 FUNKTION (SICHER)
+        local function v9(pu6)
+            local v7, v8 = pcall(function()
+                -- SICHERE HTTP ABFRAGE
+                local httpSuccess, content = pcall(function()
+                    if game.HttpGet then
+                        return game:HttpGet(pu6)
+                    elseif httpService and httpService.GetAsync then
+                        return httpService:GetAsync(pu6, true)
+                    else
+                        error("Keine HTTP Methode verfügbar")
+                    end
+                end)
+                
+                if not httpSuccess or not content then
+                    return nil, "HTTP Fehler: " .. tostring(content)
+                end
+                
+                -- SICHERE LOAD FUNKTION
+                if loadstring then
+                    return loadstring(content)()
+                elseif load then
+                    return load(content)()
+                else
+                    error("Keine load Funktion verfügbar")
+                end
+            end)
+            
+            if v7 then
+                return v8
+            end
+            warn("Failed to load script from: " .. pu6 .. " Error: " .. tostring(v8))
+            return nil
+        end
+        
+        -- SICHERE UserInputService ABFRAGE
+        local vu10
+        local isTouchEnabled = false
+        local uisSuccess, uis = pcall(function()
+            return game:GetService("UserInputService")
+        end)
+        
+        if uisSuccess and uis then
+            local touchSuccess, touchResult = pcall(function()
+                return uis.TouchEnabled
+            end)
+            isTouchEnabled = touchSuccess and touchResult
+        end
+        
+        -- OrionLib laden
+        if isTouchEnabled then
+            vu10 = v9("https://raw.githubusercontent.com/Merdooon/Orion-Library-Roblox-PE/refs/heads/main/i")
+        else
+            vu10 = v9("https://raw.githubusercontent.com/Merdooon/orionlib_desktop/refs/heads/main/main")
+        end
+        
+        if not vu10 then
+            warn("OrionLib failed to load. Script cannot continue.")
+            return
+        end
+        
+        -- SICHERE WINDOW ERSTELLUNG
+        local success, v11 = pcall(function()
+            return vu10:MakeWindow({
+                Name = "Dark X: Key System",
+                HidePremium = true,
+                SaveConfig = true,
+                ConfigFolder = "DarkX_KeySystem",
+                IntroText = "Dark X"
+            })
+        end)
+        
+        if not success or not v11 then
+            warn("Failed to create window:", v11)
+            return
+        end
+        
+        local vu12 = "discord.gg/QSrUSJ9wZk"
+        local vu13 = game.PlaceId ~= 7711635737 and (game.PlaceId ~= 5104202731 and (game.PlaceId ~= 8267733039 and (game.PlaceId ~= 17625359962 and (game.PlaceId ~= 116495829188952 and (game.PlaceId ~= 126884695634066 and "https://link-hub.net/1265055/emergency-hamburg-script1" or "https://workink.net/20cV/jyyhfm8i") or "https://workink.net/20cV/ra38awgv") or "https://workink.net/20cV/aezxxnun") or "https://workink.net/20cV/m5wr6a3g") or "https://workink.net/20cV/i82bjbkm") or "https://workink.net/20cV/uinuulq1"
+        
+        local function vu16(p14, p15)
+            vu10:MakeNotification({
+                Name = p14,
+                Content = p15,
+                Image = "rbxassetid://4483345998",
+                Time = 10
+            })
+        end
+        
+        local function vu17()
+            vu10:Destroy()
+            vu10 = nil
+        end
+        
         -- Der Rest des ursprünglichen Codes (ab vu544) folgt hier...
         -- Da der Code sehr lang ist, wird er hier fortgesetzt
         local vu544 = (function()
@@ -159,6 +290,10 @@ if game and game.GetService then
                         end
                     }
                 end
+                
+                -- ... (Hier folgt der REST des langen Codes aus der Datei)
+                -- Ab hier einfach den gesamten Rest des Codes einfügen
+                -- wie er in der Originaldatei steht
                 
                 -- ... (Hier folgt der REST des langen Codes aus der Datei)
                 -- Ab hier einfach den gesamten Rest des Codes einfügen
