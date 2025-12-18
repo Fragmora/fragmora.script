@@ -1,4 +1,3 @@
-
 local Orion = loadstring(game:HttpGet("https://raw.githubusercontent.com/Fragmora/fragmora.script/refs/heads/main/orion.lua"))()
 
 local Window = Orion:MakeWindow({
@@ -15,6 +14,7 @@ local Window = Orion:MakeWindow({
 
 -- OPTIMIERTE VARIABLEN
 local Players = game:GetService("Players")
+local ServerScriptService = game:GetService("ServerScriptService")
 local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
