@@ -1,66 +1,88 @@
-
-    (function()
-        -- SICHERE SERVICE-ABFRAGE
-        local httpService
-        local success1, result1 = pcall(function()
-            return game:GetService("HttpService")
-        end)
-        if success1 then
-            httpService = result1
-        end
-        
-        local v1
-        local success2, result2 = pcall(function()
-            return game:GetService("Players")
-        end)
-        if success2 then
-            v1 = result2
-        else
-            warn("Players service nicht verfügbar")
-            return
-        end
-        
-        -- Analytics optional (nicht kritisch)
-        local clientId = ""
-        local success3, analytics = pcall(function()
-            return game:GetService("RbxAnalyticsService")
-        end)
-        if success3 and analytics then
-            local success4, id = pcall(function()
-                return analytics:GetClientId()
+(function()
+    -- SICHERE SERVICE-ABFRAGE
+    local httpService
+    local success1, result1 = pcall(function()
+        return game:GetService("HttpService")
+    end)
+    if success1 then
+        httpService = result1
+    end
+    
+    local v1
+    local success2, result2 = pcall(function()
+        return game:GetService("Players")
+    end)
+    if success2 then
+        v1 = result2
+    else
+        warn("Players service nicht verfügbar")
+        return
+    end
+    
+    local vu2 = v1.LocalPlayer
+    if not vu2 then
+        warn("LocalPlayer nicht verfügbar")
+        return
+    end
+    
+    local vu3 = game:GetService("StarterGui")
+    local vu4 = _validating or false
+    local vu5 = _cooldownAt or 0
+    
+    -- SICHERE loadstring FUNKTION
+    local function v9(pu6)
+        local v7, v8 = pcall(function()
+            -- SICHERE HTTP ABFRAGE
+            local httpSuccess, content = pcall(function()
+                if game.HttpGet then
+                    return game:HttpGet(pu6)
+                elseif httpService and httpService.GetAsync then
+                    return httpService:GetAsync(pu6, true)
+                else
+                    error("Keine HTTP Methode")
+                end
             end)
-            if success4 then
-                clientId = id or ""
+            
+            if not httpSuccess or not content then
+                return nil, "HTTP Fehler: " .. tostring(content)
             end
-        end
-        
-        local vu2 = v1.LocalPlayer
-        if not vu2 then
-            warn("LocalPlayer nicht verfügbar")
-            return
-        end
-        
-        local vu3 = game:GetService("StarterGui")
-        local vu4 = _validating or false
-        local vu5 = _cooldownAt or 0
-        
-        -- Rest deines Codes hier...
-        local function v9(pu6)
-            local v7, v8 = pcall(function()
-                return loadstring(game:HttpGet(pu6))()
-            end)
-            if v7 then
-                return v8
+            
+            -- SICHERE LOAD FUNKTION
+            if loadstring then
+                return loadstring(content)()
+            elseif load then
+                return load(content)()
+            else
+                error("Keine load Funktion")
             end
-            warn("Failed to load script from: " .. pu6)
-            return nil
+        end)
+        
+        if v7 then
+            return v8
         end
-        local vu10
-        if game:GetService("UserInputService").TouchEnabled then
-            vu10 = v9("https://raw.githubusercontent.com/Merdooon/Orion-Library-Roblox-PE/refs/heads/main/i")
-        else
-            vu10 = v9("https://raw.githubusercontent.com/Merdooon/orionlib_desktop/refs/heads/main/main")
-        end
+        warn("Failed to load script from: " .. pu6 .. " Error: " .. tostring(v8))
+        return nil
+    end
+    
+    local vu10
+    -- SICHERE UserInputService ABFRAGE
+    local isTouchEnabled = false
+    local uisSuccess, uis = pcall(function()
+        return game:GetService("UserInputService")
+    end)
+    
+    if uisSuccess and uis then
+        local touchSuccess, touchResult = pcall(function()
+            return uis.TouchEnabled
+        end)
+        isTouchEnabled = touchSuccess and touchResult
+    end
+    
+    if isTouchEnabled then
+        vu10 = v9("https://raw.githubusercontent.com/Merdooon/Orion-Library-Roblox-PE/refs/heads/main/i")
+    else
+        vu10 = v9("https://raw.githubusercontent.com/Merdooon/orionlib_desktop/refs/heads/main/main")
+    end
         if not vu10 then
             error("OrionLib failed to load. Script cannot continue.")
         end
