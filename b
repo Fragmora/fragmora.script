@@ -121,203 +121,6 @@ if game and game.GetService then
             vu10 = nil
         end
         
-        -- Hier kommt der REST des Originalcodes (vu544 usw.)
-        -- Füge hier den gesamten Rest deines Codes ein
-        
-    end)()  -- DIESE KLAMMERN SIND WICHTIG!
-end
-        
-        if not success or not v11 then
-            warn("Failed to create window:", v11)
-            return
-        end
-        
-        local vu12 = "discord.gg/QSrUSJ9wZk"
-        local vu13 = game.PlaceId ~= 7711635737 and (game.PlaceId ~= 5104202731 and (game.PlaceId ~= 8267733039 and (game.PlaceId ~= 17625359962 and (game.PlaceId ~= 116495829188952 and (game.PlaceId ~= 126884695634066 and "https://link-hub.net/1265055/emergency-hamburg-script1" or "https://workink.net/20cV/jyyhfm8i") or "https://workink.net/20cV/ra38awgv") or "https://workink.net/20cV/aezxxnun") or "https://workink.net/20cV/m5wr6a3g") or "https://workink.net/20cV/i82bjbkm") or "https://workink.net/20cV/uinuulq1"
-        
-        local function vu16(p14, p15)
-            vu10:MakeNotification({
-                Name = p14,
-                Content = p15,
-                Image = "rbxassetid://4483345998",
-                Time = 10
-            })
-        end
-        
-        local function vu17()
-            vu10:Destroy()
-            vu10 = nil
-        end
-        
-if game and game.GetService then
-    -- QUEUE_ON_TELEPORT SICHER ENTFERNEN/DEAKTIVIEREN
-    -- if game.PlaceId ~= 17625359962 then
-    --     queue_on_teleport("loadstring(game:HttpGet('https://darkx-script.com/script'))()")
-    -- end;
-
-    (function()
-        -- SICHERE SERVICE-ABFRAGE
-        local httpService
-        local success1, result1 = pcall(function()
-            return game:GetService("HttpService")
-        end)
-        if success1 then
-            httpService = result1
-        end
-
-        local v1
-        local success2, result2 = pcall(function()
-            return game:GetService("Players")
-        end)
-        if success2 then
-            v1 = result2
-        else
-            warn("Players service nicht verfügbar")
-            return
-        end
-        
-        local vu2 = v1.LocalPlayer
-        if not vu2 then
-            warn("LocalPlayer nicht verfügbar")
-            return
-        end
-
-        local vu3 = game:GetService("StarterGui")
-        local vu4 = _validating or false
-        local vu5 = _cooldownAt or 0
-
-        -- KORRIGIERTE v9 FUNKTION (SICHER)
-        local function v9(pu6)
-            local v7, v8 = pcall(function()
-                -- SICHERE HTTP ABFRAGE
-                local httpSuccess, content = pcall(function()
-                    if game.HttpGet then
-                        return game:HttpGet(pu6)
-                    elseif httpService and httpService.GetAsync then
-                        return httpService:GetAsync(pu6, true)
-                    else
-                        error("Keine HTTP Methode verfügbar")
-                    end
-                end)
-                
-                if not httpSuccess or not content then
-                    return nil, "HTTP Fehler: " .. tostring(content)
-                end
-                
-                -- SICHERE LOAD FUNKTION
-                if loadstring then
-                    return loadstring(content)()
-                elseif load then
-                    return load(content)()
-                else
-                    error("Keine load Funktion verfügbar")
-                end
-            end)
-            
-            if v7 then
-                return v8
-            end
-            warn("Failed to load script from: " .. pu6 .. " Error: " .. tostring(v8))
-            return nil
-        end
-        
-        -- SICHERE UserInputService ABFRAGE
-        local vu10
-        local isTouchEnabled = false
-        local uisSuccess, uis = pcall(function()
-            return game:GetService("UserInputService")
-        end)
-        
-        if uisSuccess and uis then
-            local touchSuccess, touchResult = pcall(function()
-                return uis.TouchEnabled
-            end)
-            isTouchEnabled = touchSuccess and touchResult
-        end
-        
-        -- OrionLib laden
-        if isTouchEnabled then
-            vu10 = v9("https://raw.githubusercontent.com/Merdooon/Orion-Library-Roblox-PE/refs/heads/main/i")
-        else
-            vu10 = v9("https://raw.githubusercontent.com/Merdooon/orionlib_desktop/refs/heads/main/main")
-        end
-        
-        if not vu10 then
-            warn("OrionLib failed to load. Script cannot continue.")
-            return
-        end
-        
-        -- SICHERE WINDOW ERSTELLUNG
-        local success, v11 = pcall(function()
-            return vu10:MakeWindow({
-                Name = "Dark X: Key System",
-                HidePremium = true,
-                SaveConfig = true,
-                ConfigFolder = "DarkX_KeySystem",
-                IntroText = "Dark X"
-            })
-        end)
-        
-        if not success or not v11 then
-            warn("Failed to create window:", v11)
-            return
-        end
-        
-        local vu12 = "discord.gg/QSrUSJ9wZk"
-        local vu13 = game.PlaceId ~= 7711635737 and (game.PlaceId ~= 5104202731 and (game.PlaceId ~= 8267733039 and (game.PlaceId ~= 17625359962 and (game.PlaceId ~= 116495829188952 and (game.PlaceId ~= 126884695634066 and "https://link-hub.net/1265055/emergency-hamburg-script1" or "https://workink.net/20cV/jyyhfm8i") or "https://workink.net/20cV/ra38awgv") or "https://workink.net/20cV/aezxxnun") or "https://workink.net/20cV/m5wr6a3g") or "https://workink.net/20cV/i82bjbkm") or "https://workink.net/20cV/uinuulq1"
-        
-        local function vu16(p14, p15)
-            vu10:MakeNotification({
-                Name = p14,
-                Content = p15,
-                Image = "rbxassetid://4483345998",
-                Time = 10
-            })
-        end
-        
-        local function vu17()
-            vu10:Destroy()
-            vu10 = nil
-        end
-        
-        -- Der Rest des ursprünglichen Codes (ab vu544) folgt hier...
-        -- Da der Code sehr lang ist, wird er hier fortgesetzt
-        local vu544 = (function()
-            local v542, v543 = pcall(function()
-                local v18 = bit32 or bit
-                if not v18 then
-                    local function vu20(p19)
-                        return p19 % 4294967296
-                    end
-                    v18 = {
-                        band = function(p21, p22)
-                            return vu20(bit32.band(math.floor(p21) % 4294967296, math.floor(p22) % 4294967296))
-                        end,
-                        bor = function(p23, p24)
-                            return vu20(bit32.bor(math.floor(p23) % 4294967296, math.floor(p24) % 4294967296))
-                        end,
-                        bxor = function(p25, p26)
-                            return vu20(bit32.bxor(math.floor(p25) % 4294967296, math.floor(p26) % 4294967296))
-                        end,
-                        bnot = function(p27)
-                            return vu20(bit32.bnot(math.floor(p27) % 4294967296))
-                        end,
-                        rshift = function(p28, p29)
-                            return vu20(math.floor(p28) / 2 ^ p29)
-                        end,
-                        lshift = function(p30, p31)
-                            return vu20(math.floor(p30) * 2 ^ p31)
-                        end
-                    }
-                end
-                
-                -- ... (Hier folgt der REST des langen Codes aus der Datei)
-                -- Ab hier einfach den gesamten Rest des Codes einfügen
-                -- wie er in der Originaldatei steht
-                
-                -- ... (Hier folgt der REST des langen Codes aus der Datei)
-                -- Ab hier einfach den gesamten Rest des Codes einfügen
-                -- wie er in der Originaldatei steht
         local vu544 = (function()
             local v542, v543 = pcall(function()
                 local v18 = bit32 or bit
@@ -1346,6 +1149,435 @@ if game and game.GetService then
                         break
                     end
                 end
+                local function vu341(p339, p340)
+                    return string.char(vu325(vu334(p339, 24), 255), vu325(vu334(p339, 16), 255), vu325(vu334(p339, 8), 255), vu325(p339, 255), vu325(vu334(p340, 24), 255), vu325(vu334(p340, 16), 255), vu325(vu334(p340, 8), 255), vu325(p340, 255))
+                end
+                local function vu475(p342)
+                    if type(p342) ~= "string" then
+                        return ""
+                    end
+                    local vu343 = os.clock()
+                    local function v344()
+                        if os.clock() - vu343 > 0.006 then
+                            vu343 = os.clock()
+                            task.wait()
+                        end
+                    end
+                    local v345 = # p342
+                    local v346 = (112 - (v345 + 1) % 128) % 128
+                    local v347 = string.char(128) .. string.rep("\0", v346)
+                    local v348 = v345 * 8
+                    local v349 = math.floor(v348 / 4294967296)
+                    local v350 = v348 % 4294967296
+                    local v351 = p342 .. v347 .. vu341(0, 0) .. vu341(v349, v350)
+                    local v352 = vu321
+                    local v353 = vu333
+                    local v354 = vu294
+                    local v355 = xor64_3
+                    local v356 = vu304
+                    local v357 = vu307
+                    local v358 = vu341
+                    local v359 = vu332
+                    local v360 = vu335
+                    local v361 = 0
+                    local v362 = {
+                        1779033703,
+                        3144134277,
+                        1013904242,
+                        2773480762,
+                        1359893119,
+                        2600822924,
+                        528734635,
+                        1541459225
+                    }
+                    local v363 = {}
+                    local v364 = {
+                        4089235720,
+                        2227873595,
+                        4271175723,
+                        1595750129,
+                        2917565137,
+                        725511199,
+                        4215389547,
+                        327033209
+                    }
+                    local v365 = {}
+                    for v366 = 1, # v351, 128 do
+                        local _ = v366
+                        for v367 = 0, 15 do
+                            local v368 = v366 + v367 * 8
+                            local v369, v370, v371, v372, v373, v374, v375, v376 = v351:byte(v368, v368 + 7)
+                            local v377 = v359(v360(v369 or 0, 24), v360(v370 or 0, 16), v360(v371 or 0, 8), v372 or 0)
+                            local v378 = v359(v360(v373 or 0, 24), v360(v374 or 0, 16), v360(v375 or 0, 8), v376 or 0)
+                            v365[v367] = v377
+                            v363[v367] = v378
+                        end
+                        for v379 = 16, 79 do
+                            local v380, v381 = v352(v365[v379 - 15], v363[v379 - 15], 1)
+                            local v382, v383 = v352(v365[v379 - 15], v363[v379 - 15], 8)
+                            local v384, v385 = vu311(v365[v379 - 15], v363[v379 - 15], 7)
+                            local v386, v387 = v355(v380, v381, v382, v383, v384, v385)
+                            local v388, v389 = v352(v365[v379 - 2], v363[v379 - 2], 19)
+                            local v390, v391 = v352(v365[v379 - 2], v363[v379 - 2], 61)
+                            local v392, v393 = vu311(v365[v379 - 2], v363[v379 - 2], 6)
+                            local v394, v395 = v355(v388, v389, v390, v391, v392, v393)
+                            local v396, v397 = v354(v365[v379 - 16], v363[v379 - 16], v386, v387, v365[v379 - 7], v363[v379 - 7], v394, v395)
+                            v365[v379] = v396
+                            v363[v379] = v397
+                            if v379 % 8 == 0 then
+                                v344()
+                            end
+                        end
+                        local v398 = v362[1]
+                        local v399 = v364[1]
+                        local v400 = v362[2]
+                        local v401 = v364[2]
+                        local v402 = v362[3]
+                        local v403 = v364[3]
+                        local v404 = v362[4]
+                        local v405 = v364[4]
+                        local v406 = v362[5]
+                        local v407 = v364[5]
+                        local v408 = v362[6]
+                        local v409 = v364[6]
+                        local v410 = v362[7]
+                        local v411 = v364[7]
+                        local v412 = v362[8]
+                        local v413 = v364[8]
+                        for v414 = 0, 79 do
+                            local v415, v416 = v352(v406, v407, 14)
+                            local v417, v418 = v352(v406, v407, 18)
+                            local v419, v420 = v352(v406, v407, 41)
+                            local v421, v422 = v355(v415, v416, v417, v418, v419, v420)
+                            local v423, v424 = v356(v406, v407, v408, v409)
+                            local v425, v426 = v357(v406, v407)
+                            local v427, v428 = v356(v425, v426, v410, v411)
+                            local v429, v430 = vu299(v423, v424, v427, v428)
+                            local v431, v432 = v354(v412, v413, v421, v422, v429, v430, vu337[v414 + 1][1], vu337[v414 + 1][2])
+                            local v433, v434 = v353(v431, v432, v365[v414], v363[v414])
+                            local v435, v436 = v352(v398, v399, 28)
+                            local v437, v438 = v352(v398, v399, 34)
+                            local v439, v440 = v352(v398, v399, 39)
+                            local v441, v442 = v355(v435, v436, v437, v438, v439, v440)
+                            local v443, v444 = v356(v398, v399, v400, v401)
+                            local v445, v446 = v356(v398, v399, v402, v403)
+                            local v447, v448 = v356(v400, v401, v402, v403)
+                            local v449, v450 = xor64_3(v443, v444, v445, v446, v447, v448)
+                            local v451, v452 = v353(v441, v442, v449, v450)
+                            local v453, v454 = v353(v404, v405, v433, v434)
+                            local v455, v456 = v353(v433, v434, v451, v452)
+                            if v414 % 8 ~= 0 then
+                                v404 = v402
+                                v402 = v400
+                                v400 = v398
+                                v398 = v455
+                                v413 = v411
+                                v411 = v409
+                                v409 = v407
+                                v407 = v454
+                                v405 = v403
+                                v403 = v401
+                                v401 = v399
+                                v399 = v456
+                                v412 = v410
+                                v410 = v408
+                                v408 = v406
+                                v406 = v453
+                            else
+                                v344()
+                                v404 = v402
+                                v402 = v400
+                                v400 = v398
+                                v398 = v455
+                                v413 = v411
+                                v411 = v409
+                                v409 = v407
+                                v407 = v454
+                                v405 = v403
+                                v403 = v401
+                                v401 = v399
+                                v399 = v456
+                                v412 = v410
+                                v410 = v408
+                                v408 = v406
+                                v406 = v453
+                            end
+                        end
+                        local v457, v458 = v353(v362[1], v364[1], v398, v399)
+                        v364[1] = v458
+                        v362[1] = v457
+                        local v459, v460 = v353(v362[2], v364[2], v400, v401)
+                        v364[2] = v460
+                        v362[2] = v459
+                        local v461, v462 = v353(v362[3], v364[3], v402, v403)
+                        v364[3] = v462
+                        v362[3] = v461
+                        local v463, v464 = v353(v362[4], v364[4], v404, v405)
+                        v364[4] = v464
+                        v362[4] = v463
+                        local v465, v466 = v353(v362[5], v364[5], v406, v407)
+                        v364[5] = v466
+                        v362[5] = v465
+                        local v467, v468 = v353(v362[6], v364[6], v408, v409)
+                        v364[6] = v468
+                        v362[6] = v467
+                        local v469, v470 = v353(v362[7], v364[7], v410, v411)
+                        v364[7] = v470
+                        v362[7] = v469
+                        local v471, v472 = v353(v362[8], v364[8], v412, v413)
+                        v364[8] = v472
+                        v362[8] = v471
+                        v361 = v361 + 1
+                        if v361 % 4 == 0 then
+                            task.wait()
+                        end
+                    end
+                    local v473 = {}
+                    for v474 = 1, 8 do
+                        v473[# v473 + 1] = v358(v362[v474], v364[v474])
+                    end
+                    return table.concat(v473)
+                end
+                local function vu482(p476)
+                    if crypt and type(crypt.hash) == "function" then
+                        local v477, v478 = pcall(crypt.hash, p476, "sha512")
+                        if not v477 or type(v478) ~= "string" then
+                            v477, v478 = pcall(crypt.hash, "sha512", p476)
+                        end
+                        if v477 and type(v478) == "string" then
+                            local v479 = v478:gsub("[^0-9a-fA-F]", ""):lower()
+                            if # v479 == 128 then
+                                local v480 = {}
+                                for v481 = 1, 128, 2 do
+                                    v480[# v480 + 1] = string.char(tonumber(v479:sub(v481, v481 + 1), 16))
+                                    if v481 % 32 == 1 then
+                                        task.wait()
+                                    end
+                                end
+                                return table.concat(v480)
+                            end
+                            if # v478 == 64 then
+                                return v478
+                            end
+                        end
+                    end
+                    return vu475(p476)
+                end
+                local function _(p483)
+                    if type(p483) ~= "string" or # p483 ~= 64 then
+                        return nil
+                    end
+                    local v484 = {}
+                    for v485 = 1, 64, 8 do
+                        v484[# v484 + 1] = p483:sub(v485, v485 + 7):reverse()
+                    end
+                    return table.concat(v484)
+                end
+                local function vu489(p486)
+                    if type(p486) ~= "string" then
+                        return nil
+                    end
+                    local v487 = {}
+                    for v488 = 0, # p486 - 1 do
+                        v487[v488] = string.byte(p486, v488 + 1)
+                    end
+                    return v487
+                end
+                local function vu495(p490)
+                    local v491 = {
+                        237,
+                        211,
+                        245,
+                        92,
+                        26,
+                        99,
+                        18,
+                        88,
+                        214,
+                        156,
+                        247,
+                        162,
+                        222,
+                        249,
+                        222,
+                        20,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0,
+                        16
+                    }
+                    for v492 = 31, 0, - 1 do
+                        local v493 = p490[v492] or 0
+                        local v494 = v491[v492 + 1]
+                        if v493 ~= v494 then
+                            return v493 < v494
+                        end
+                    end
+                    return true
+                end
+                local function vu500(p496, p497)
+                    local v498 = vu331()
+                    local v499 = vu331()
+                    vu330(v498, p496[0], p497[2])
+                    vu330(v499, p497[0], p496[2])
+                    vu324(v498, v498, v499)
+                    if vu329(v498, vu328) ~= 0 then
+                        return false
+                    end
+                    vu330(v498, p496[1], p497[2])
+                    vu330(v499, p497[1], p496[2])
+                    vu324(v498, v498, v499)
+                    return vu329(v498, vu328) == 0
+                end
+                local function v518(p501, p502, p503)
+                    if type(p501) ~= "string" or (type(p502) ~= "string" or type(p503) ~= "string") then
+                        return false
+                    end
+                    if # p502 ~= 64 or # p503 ~= 32 then
+                        return false
+                    end
+                    local v504 = vu489(p503)
+                    if not v504 then
+                        return false
+                    end
+                    local v505 = vu489(p502)
+                    if not v505 then
+                        return false
+                    end
+                    local v506 = {}
+                    for v507 = 0, 31 do
+                        v506[v507] = v505[v507 + 32]
+                    end
+                    if not vu495(v506) then
+                        return false
+                    end
+                    local v508 = {
+                        vu331(),
+                        vu331(),
+                        vu331(),
+                        vu331()
+                    }
+                    if unpackneg(v508, v505) ~= 0 then
+                        return false
+                    end
+                    local v509 = {
+                        vu331(),
+                        vu331(),
+                        vu331(),
+                        vu331()
+                    }
+                    if unpackneg(v509, v504) ~= 0 then
+                        return false
+                    end
+                    local v510 = {}
+                    for v511 = 0, 31 do
+                        v510[# v510 + 1] = string.char(v505[v511])
+                    end
+                    for v512 = 0, 31 do
+                        v510[# v510 + 1] = string.char(v504[v512])
+                    end
+                    v510[# v510 + 1] = p501
+                    local v513 = vu482(table.concat(v510))
+                    if not v513 or # v513 ~= 64 then
+                        return false
+                    end
+                    local v514 = vu489(v513)
+                    vu252(v514)
+                    local v515 = {
+                        vu331(),
+                        vu331(),
+                        vu331(),
+                        vu331()
+                    }
+                    vu230(v515, v506)
+                    local v516 = {
+                        vu331(),
+                        vu331(),
+                        vu331(),
+                        vu331()
+                    }
+                    vu336(v516, v509, v514)
+                    local v517 = {
+                        vu331(),
+                        vu331(),
+                        vu331(),
+                        vu331()
+                    }
+                    vu327(v517[0], v508[0])
+                    vu327(v517[1], v508[1])
+                    vu327(v517[2], v508[2])
+                    vu327(v517[3], v508[3])
+                    vu326(v517, v516)
+                    return vu500(v515, v517)
+                end
+                local v519 = vu475
+                local v520 = {}
+                for v521 = 0, 63 do
+                    local v522 = v521
+                    local v523
+                    if v522 >= 26 then
+                        if v522 >= 52 then
+                            if v522 >= 62 then
+                                v523 = v522 ~= 62 and "/" or "+"
+                            else
+                                v523 = string.char(v522 - 4)
+                            end
+                        else
+                            v523 = string.char(71 + v522)
+                        end
+                    else
+                        v523 = string.char(65 + v522)
+                    end
+                    v520[v523] = v522
+                end
+                local vu524 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+                local function vu538(p525)
+                    if type(p525) ~= "string" then
+                        return ""
+                    end
+                    local v526 = p525:gsub("[^" .. vu524 .. "=]", "")
+                    local function v529(p527)
+                        if p527 == "=" then
+                            return nil
+                        end
+                        local v528 = vu524:find(p527, 1, true)
+                        return v528 and v528 - 1 or nil
+                    end
+                    local v530 = 1
+                    local v531 = {}
+                    local v532 = 0
+                    while v530 <= # v526 do
+                        -- ... (Rest des Codes aus der Datei)
+                    end
+                    return table.concat(v531)
+                end
+                
+                return true  -- WICHTIG: Return für vu544
+            end)
+            
+            if not v542 then
+                warn("Fehler in vu544:", v543)
+                return nil
+            end
+            return v543
+        end)()
+        
+        -- HIER KÖNNEN WEITERE FUNKTIONEN FOLGEN
+        
+    end)()  -- WICHTIG: Diese Klammern rufen die Hauptfunktion auf
+end
                 local function vu341(p339, p340)
                     return string.char(vu325(vu334(p339, 24), 255), vu325(vu334(p339, 16), 255), vu325(vu334(p339, 8), 255), vu325(p339, 255), vu325(vu334(p340, 24), 255), vu325(vu334(p340, 16), 255), vu325(vu334(p340, 8), 255), vu325(p340, 255))
                 end
