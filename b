@@ -30,61 +30,58 @@ if game and game.GetService then
         local vu4 = _validating or false
         local vu5 = _cooldownAt or 0
 
-        -- KORRIGIERTE v9 FUNKTION (SICHER)
-        local function v9(pu6)
-            local v7, v8 = pcall(function()
-                -- SICHERE HTTP ABFRAGE
-                local httpSuccess, content = pcall(function()
-                    if game.HttpGet then
-                        return game:HttpGet(pu6)
-                    elseif httpService and httpService.GetAsync then
-                        return httpService:GetAsync(pu6, true)
-                    else
-                        error("Keine HTTP Methode verfügbar")
-                    end
-                end)
-                
-                if not httpSuccess or not content then
-                    return nil, "HTTP Fehler: " .. tostring(content)
-                end
-                
-                -- SICHERE LOAD FUNKTION
-                if loadstring then
-                    return loadstring(content)()
-                elseif load then
-                    return load(content)()
-                else
-                    error("Keine load Funktion verfügbar")
-                end
-            end)
-            
-            if v7 then
-                return v8
+local function v9(pu6)
+    local v7, v8 = pcall(function()
+        -- SICHERE HTTP ABFRAGE
+        local httpSuccess, content = pcall(function()
+            if game.HttpGet then
+                return game:HttpGet(pu6)
+            elseif httpService and httpService.GetAsync then
+                return httpService:GetAsync(pu6, true)
+            else
+                error("Keine HTTP Methode")
             end
-            warn("Failed to load script from: " .. pu6 .. " Error: " .. tostring(v8))
-            return nil
-        end
-        
-        -- SICHERE UserInputService ABFRAGE
-        local vu10
-        local isTouchEnabled = false
-        local uisSuccess, uis = pcall(function()
-            return game:GetService("UserInputService")
         end)
         
-        if uisSuccess and uis then
-            local touchSuccess, touchResult = pcall(function()
-                return uis.TouchEnabled
-            end)
-            isTouchEnabled = touchSuccess and touchResult
+        if not httpSuccess or not content then
+            return nil, "HTTP Fehler"
         end
         
-        -- OrionLib laden
-        if isTouchEnabled then
-            vu10 = v9("https://raw.githubusercontent.com/Merdooon/Orion-Library-Roblox-PE/refs/heads/main/i")
+        -- SICHERE LOAD FUNKTION
+        if loadstring then
+            return loadstring(content)()
+        elseif load then
+            return load(content)()
         else
-            vu10 = v9("https://raw.githubusercontent.com/Merdooon/orionlib_desktop/refs/heads/main/main")
+            error("Keine load Funktion")
         end
+    end)
+    
+    if v7 then
+        return v8
+    end
+    warn("Failed to load script from: " .. pu6 .. " Error: " .. tostring(v8))
+    return nil
+end
+        
+local vu10
+-- SICHERE UserInputService ABFRAGE
+local isTouch = false
+local uisSuccess, uis = pcall(function()
+    return game:GetService("UserInputService")
+end)
+if uisSuccess and uis then
+    local touchSuccess, touchResult = pcall(function()
+        return uis.TouchEnabled
+    end)
+    isTouch = touchSuccess and touchResult
+end
+
+if isTouch then
+    vu10 = v9("https://raw.githubusercontent.com/Merdooon/Orion-Library-Roblox-PE/refs/heads/main/i")
+else
+    vu10 = v9("https://raw.githubusercontent.com/Merdooon/orionlib_desktop/refs/heads/main/main")
+end
         
         if not vu10 then
             warn("OrionLib failed to load. Script cannot continue.")
