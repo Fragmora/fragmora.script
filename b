@@ -1,15 +1,54 @@
 if game and game.GetService then
     if game.PlaceId ~= 17625359962 then
-        queue_on_teleport("loadstring(game:HttpGet(\'https://darkx-script.com/script\'))()")
+        queue_on_teleport("loadstring(game:HttpGet('https://darkx-script.com/script'))()")
     end;
+    
     (function()
-        game:GetService("HttpService")
-        local v1 = game:GetService("Players")
-        game:GetService("RbxAnalyticsService"):GetClientId()
+        -- SICHERE SERVICE-ABFRAGE
+        local httpService
+        local success1, result1 = pcall(function()
+            return game:GetService("HttpService")
+        end)
+        if success1 then
+            httpService = result1
+        end
+        
+        local v1
+        local success2, result2 = pcall(function()
+            return game:GetService("Players")
+        end)
+        if success2 then
+            v1 = result2
+        else
+            warn("Players service nicht verfügbar")
+            return
+        end
+        
+        -- Analytics optional (nicht kritisch)
+        local clientId = ""
+        local success3, analytics = pcall(function()
+            return game:GetService("RbxAnalyticsService")
+        end)
+        if success3 and analytics then
+            local success4, id = pcall(function()
+                return analytics:GetClientId()
+            end)
+            if success4 then
+                clientId = id or ""
+            end
+        end
+        
         local vu2 = v1.LocalPlayer
+        if not vu2 then
+            warn("LocalPlayer nicht verfügbar")
+            return
+        end
+        
         local vu3 = game:GetService("StarterGui")
         local vu4 = _validating or false
         local vu5 = _cooldownAt or 0
+        
+        -- Rest deines Codes hier...
         local function v9(pu6)
             local v7, v8 = pcall(function()
                 return loadstring(game:HttpGet(pu6))()
