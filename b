@@ -1,4 +1,11 @@
-if game and game.GetService then
+-- ABSOLUTE SICHERHEITSPRÜFUNG
+local isRoblox = (type(game) == "table" or typeof(game) == "Instance") 
+              and type(game.GetService) == "function"
+
+if not isRoblox then
+    -- Stille Fehlerbehandlung - nichts tun
+    return
+end
     (function()
         -- SICHERE SERVICE-ABFRAGE
         local httpService
