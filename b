@@ -1,6 +1,6 @@
 
 -- Orion-Loadstring korrigieren
-local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
+local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/Fragmora/fragmora.script/refs/heads/main/orion.lua"))()
 
 local Window = OrionLib:MakeWindow({
     Name = "Fragmora V2.0 | Emergency Hamburg",
