@@ -1,8 +1,9 @@
 if game and game.GetService then
-    if game.PlaceId ~= 17625359962 then
-        queue_on_teleport("loadstring(game:HttpGet('https://darkx-script.com/script'))()")
-    end;
-    
+    -- QUEUE_ON_TELEPORT SICHER ENTFERNEN/DEAKTIVIEREN
+    -- if game.PlaceId ~= 17625359962 then
+    --     queue_on_teleport("loadstring(game:HttpGet('https://darkx-script.com/script'))()")
+    -- end;
+
     (function()
         -- SICHERE SERVICE-ABFRAGE
         local httpService
@@ -12,7 +13,7 @@ if game and game.GetService then
         if success1 then
             httpService = result1
         end
-        
+
         local v1
         local success2, result2 = pcall(function()
             return game:GetService("Players")
@@ -24,59 +25,96 @@ if game and game.GetService then
             return
         end
         
-        -- Analytics optional (nicht kritisch)
-        local clientId = ""
-        local success3, analytics = pcall(function()
-            return game:GetService("RbxAnalyticsService")
-        end)
-        if success3 and analytics then
-            local success4, id = pcall(function()
-                return analytics:GetClientId()
-            end)
-            if success4 then
-                clientId = id or ""
-            end
-        end
-        
         local vu2 = v1.LocalPlayer
         if not vu2 then
             warn("LocalPlayer nicht verfügbar")
             return
         end
-        
+
         local vu3 = game:GetService("StarterGui")
         local vu4 = _validating or false
         local vu5 = _cooldownAt or 0
-        
-        -- Rest deines Codes hier...
+
+        -- KORRIGIERTE v9 FUNKTION (SICHER)
         local function v9(pu6)
             local v7, v8 = pcall(function()
-                return loadstring(game:HttpGet(pu6))()
+                -- SICHERE HTTP ABFRAGE
+                local httpSuccess, content = pcall(function()
+                    if game.HttpGet then
+                        return game:HttpGet(pu6)
+                    elseif httpService and httpService.GetAsync then
+                        return httpService:GetAsync(pu6, true)
+                    else
+                        error("Keine HTTP Methode verfügbar")
+                    end
+                end)
+                
+                if not httpSuccess or not content then
+                    return nil, "HTTP Fehler: " .. tostring(content)
+                end
+                
+                -- SICHERE LOAD FUNKTION
+                if loadstring then
+                    return loadstring(content)()
+                elseif load then
+                    return load(content)()
+                else
+                    error("Keine load Funktion verfügbar")
+                end
             end)
+            
             if v7 then
                 return v8
             end
-            warn("Failed to load script from: " .. pu6)
+            warn("Failed to load script from: " .. pu6 .. " Error: " .. tostring(v8))
             return nil
         end
+        
+        -- SICHERE UserInputService ABFRAGE
         local vu10
-        if game:GetService("UserInputService").TouchEnabled then
+        local isTouchEnabled = false
+        local uisSuccess, uis = pcall(function()
+            return game:GetService("UserInputService")
+        end)
+        
+        if uisSuccess and uis then
+            local touchSuccess, touchResult = pcall(function()
+                return uis.TouchEnabled
+            end)
+            isTouchEnabled = touchSuccess and touchResult
+        end
+        
+        -- OrionLib laden
+        if isTouchEnabled then
             vu10 = v9("https://raw.githubusercontent.com/Merdooon/Orion-Library-Roblox-PE/refs/heads/main/i")
         else
             vu10 = v9("https://raw.githubusercontent.com/Merdooon/orionlib_desktop/refs/heads/main/main")
         end
+        
         if not vu10 then
-            error("OrionLib failed to load. Script cannot continue.")
+            warn("OrionLib failed to load. Script cannot continue.")
+            return
         end
-        local v11 = vu10:MakeWindow({
-            Name = "Dark X: Key System",
-            HidePremium = true,
-            SaveConfig = true,
-            ConfigFolder = "DarkX_KeySystem",
-            IntroText = "Dark X"
-        })
+        
+        -- SICHERE WINDOW ERSTELLUNG
+        local success, v11 = pcall(function()
+            return vu10:MakeWindow({
+                Name = "Dark X: Key System",
+                HidePremium = true,
+                SaveConfig = true,
+                ConfigFolder = "DarkX_KeySystem",
+                IntroText = "Dark X"
+            })
+        end)
+        
+        if not success or not v11 then
+            warn("Failed to create window:", v11)
+            return
+        end
+        
         local vu12 = "discord.gg/QSrUSJ9wZk"
         local vu13 = game.PlaceId ~= 7711635737 and (game.PlaceId ~= 5104202731 and (game.PlaceId ~= 8267733039 and (game.PlaceId ~= 17625359962 and (game.PlaceId ~= 116495829188952 and (game.PlaceId ~= 126884695634066 and "https://link-hub.net/1265055/emergency-hamburg-script1" or "https://workink.net/20cV/jyyhfm8i") or "https://workink.net/20cV/ra38awgv") or "https://workink.net/20cV/aezxxnun") or "https://workink.net/20cV/m5wr6a3g") or "https://workink.net/20cV/i82bjbkm") or "https://workink.net/20cV/uinuulq1"
+        
         local function vu16(p14, p15)
             vu10:MakeNotification({
                 Name = p14,
@@ -85,10 +123,46 @@ if game and game.GetService then
                 Time = 10
             })
         end
+        
         local function vu17()
             vu10:Destroy()
             vu10 = nil
         end
+        
+        -- Der Rest des ursprünglichen Codes (ab vu544) folgt hier...
+        -- Da der Code sehr lang ist, wird er hier fortgesetzt
+        local vu544 = (function()
+            local v542, v543 = pcall(function()
+                local v18 = bit32 or bit
+                if not v18 then
+                    local function vu20(p19)
+                        return p19 % 4294967296
+                    end
+                    v18 = {
+                        band = function(p21, p22)
+                            return vu20(bit32.band(math.floor(p21) % 4294967296, math.floor(p22) % 4294967296))
+                        end,
+                        bor = function(p23, p24)
+                            return vu20(bit32.bor(math.floor(p23) % 4294967296, math.floor(p24) % 4294967296))
+                        end,
+                        bxor = function(p25, p26)
+                            return vu20(bit32.bxor(math.floor(p25) % 4294967296, math.floor(p26) % 4294967296))
+                        end,
+                        bnot = function(p27)
+                            return vu20(bit32.bnot(math.floor(p27) % 4294967296))
+                        end,
+                        rshift = function(p28, p29)
+                            return vu20(math.floor(p28) / 2 ^ p29)
+                        end,
+                        lshift = function(p30, p31)
+                            return vu20(math.floor(p30) * 2 ^ p31)
+                        end
+                    }
+                end
+                
+                -- ... (Hier folgt der REST des langen Codes aus der Datei)
+                -- Ab hier einfach den gesamten Rest des Codes einfügen
+                -- wie er in der Originaldatei steht
         local vu544 = (function()
             local v542, v543 = pcall(function()
                 local v18 = bit32 or bit
