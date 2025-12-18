@@ -64,7 +64,7 @@ fovCircle.Radius = silentAimFOV
 local function mouseClick()
     local vim = game:GetService("VirtualInputManager")
     vim:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-    task.wait(0.05)
+    task_wait(0.05)
     vim:SendMouseButtonEvent(0, 0, 0, false, game, 1)
 end
 
@@ -89,35 +89,39 @@ local function getClosestTargetSilent()
     
     for _, plr in pairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer and plr.Character then
+            local shouldSkip = false
+            
             -- Ignoriere tote Spieler
             if ignoreDead then
                 local humanoid = plr.Character:FindFirstChild("Humanoid")
                 if humanoid and humanoid.Health <= 0 then
-                    goto continue_label
+                    shouldSkip = true
                 end
             end
             
             -- Ignoriere Team-Mitglieder
-            if ignoreTeamSilent and plr.Team == LocalPlayer.Team then
-                continue -- Hier wurde das goto entfernt
+            if not shouldSkip and ignoreTeamSilent and plr.Team == LocalPlayer.Team then
+                shouldSkip = true
             end
             
             -- Ignoriere untouchable Teams
-            if ignoreUntouchableTeams and plr.Team then
+            if not shouldSkip and ignoreUntouchableTeams and plr.Team then
                 local teamName = plr.Team.Name:lower()
                 if teamName:find("admin") or teamName:find("spectator") then
-                    continue -- Hier wurde das goto entfernt
+                    shouldSkip = true
                 end
             end
             
-            local head = plr.Character:FindFirstChild("Head")
-            if head then
-                local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
-                if onScreen then
-                    local dist = (screenCenter - Vector2_new(screenPos.X, screenPos.Y)).Magnitude
-                    if dist < shortest then
-                        closest = plr
-                        shortest = dist
+            if not shouldSkip then
+                local head = plr.Character:FindFirstChild("Head")
+                if head then
+                    local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
+                    if onScreen then
+                        local dist = (screenCenter - Vector2_new(screenPos.X, screenPos.Y)).Magnitude
+                        if dist < shortest then
+                            closest = plr
+                            shortest = dist
+                        end
                     end
                 end
             end
