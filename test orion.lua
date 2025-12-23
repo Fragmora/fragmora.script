@@ -452,8 +452,8 @@ function Library:MakeWindow(WindowConfig)
 	WindowConfig.IntroText = WindowConfig.IntroText or "Starting EldarX..."
 	WindowConfig.CloseCallback = WindowConfig.CloseCallback or function() end
 	WindowConfig.ShowIcon = WindowConfig.ShowIcon or false
-	WindowConfig.Icon = WindowConfig.Icon or "rbxassetid://114030203352375"
-	WindowConfig.IntroIcon = WindowConfig.IntroIcon or "rbxassetid://114030203352375"
+	WindowConfig.Icon = WindowConfig.Icon or "rbxassetid://74821644388108"
+	WindowConfig.IntroIcon = WindowConfig.IntroIcon or "rbxassetid://74821644388108"
 	WindowConfig.DiscordLink = WindowConfig.DiscordLink or "discord.gg/MERZrq"
 	Library.Folder = WindowConfig.ConfigFolder
 	Library.SaveCfg = WindowConfig.SaveConfig
