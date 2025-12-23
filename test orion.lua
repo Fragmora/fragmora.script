@@ -452,8 +452,8 @@ function Library:MakeWindow(WindowConfig)
 	WindowConfig.IntroText = WindowConfig.IntroText or "Starting EldarX..."
 	WindowConfig.CloseCallback = WindowConfig.CloseCallback or function() end
 	WindowConfig.ShowIcon = WindowConfig.ShowIcon or false
-	WindowConfig.Icon = WindowConfig.Icon or "rbxassetid://108992388891490"
-	WindowConfig.IntroIcon = WindowConfig.IntroIcon or "rbxassetid://8834748103"
+	WindowConfig.Icon = WindowConfig.Icon or "rbxassetid://114030203352375"
+	WindowConfig.IntroIcon = WindowConfig.IntroIcon or "rbxassetid://114030203352375"
 	WindowConfig.DiscordLink = WindowConfig.DiscordLink or "discord.gg/MERZrq"
 	Library.Folder = WindowConfig.ConfigFolder
 	Library.SaveCfg = WindowConfig.SaveConfig
@@ -552,7 +552,7 @@ function Library:MakeWindow(WindowConfig)
 				Font = Enum.Font.GothamBold,
 				ClipsDescendants = true
 			}), "Text"),
-			AddThemeObject(SetProps(MakeElement("Label", WindowConfig.DiscordLink, 12), {
+			AddThemeObject(SetProps(MakeElement("Label", WindowConfig.DiscordLink, 10), {
 				Size = UDim2.new(1, -60, 0, 12),
 				Position = UDim2.new(0, 50, 1, -25),
 				Visible = not WindowConfig.HidePremium
