@@ -1,4 +1,3 @@
-
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
@@ -27,9 +26,28 @@ local Library = {
 	Font = Enum.Font.Gotham
 }
 
--- Remove external HTTP requests and icons
+-- Verwende direkt die Asset-IDs statt HTTP-Anfragen
 local function GetIcon(IconName)
-	return nil
+	-- Falls IconName eine gültige Asset-ID ist, gebe sie zurück
+	if type(IconName) == "string" and IconName:match("^rbxassetid://%d+$") then
+		return IconName
+	end
+	-- Für bekannte Icon-Namen, gib entsprechende Asset-IDs zurück
+	local iconMap = {
+		["rbxassetid://94688225437223"] = "rbxassetid://94688225437223",
+		["rbxassetid://7072725342"] = "rbxassetid://7072725342", -- Close icon
+		["rbxassetid://7072719338"] = "rbxassetid://7072719338", -- Minimize icon
+		["rbxassetid://7072720870"] = "rbxassetid://7072720870", -- Maximize icon
+		["rbxassetid://7072706796"] = "rbxassetid://7072706796", -- Dropdown arrow
+		["rbxassetid://3944703587"] = "rbxassetid://3944703587", -- Default button icon
+		["rbxassetid://3944680095"] = "rbxassetid://3944680095", -- Checkmark icon
+		["rbxassetid://4384403532"] = "rbxassetid://4384403532", -- Default notification icon
+		["rbxassetid://4031889928"] = "rbxassetid://4031889928", -- Avatar border
+		["rbxassetid://3610239960"] = "rbxassetid://3610239960", -- Premium icon
+		["rbxassetid://4483345875"] = "rbxassetid://4483345875", -- Premium lock icon
+		["rbxassetid://8834748103"] = "rbxassetid://8834748103", -- Mobile reopen icon
+	}
+	return iconMap[IconName] or IconName -- Falls nicht gefunden, gib Original zurück
 end
 
 function Library:CleanupInstance()
@@ -188,7 +206,7 @@ local function UnpackColor(Color)
 end
 
 local function LoadCfg(Config)
-	local Data = HttpService:JSONDecode(Config)
+	local Data = game:GetService("HttpService"):JSONDecode(Config)
 	table.foreach(Data, function(a,b)
 		if Library.Flags[a] then
 			spawn(function() 
@@ -318,8 +336,9 @@ CreateElement("Image", function(ImageID)
 		BackgroundTransparency = 1
 	})
 
-	if GetIcon(ImageID) ~= nil then
-		ImageNew.Image = GetIcon(ImageID)
+	local icon = GetIcon(ImageID)
+	if icon then
+		ImageNew.Image = icon
 	end	
 
 	return ImageNew
@@ -620,7 +639,7 @@ function Library:MakeWindow(WindowConfig)
 		BackgroundColor3 = Library.Themes[Library.SelectedTheme].Main,
 		Visible = false
 	}), {
-		AddThemeObject(SetProps(MakeElement("Image", WindowConfig.IntroToggleIcon or "http://www.roblox.com/asset/?id=8834748103"), {
+		AddThemeObject(SetProps(MakeElement("Image", WindowConfig.IntroToggleIcon or "rbxassetid://8834748103"), {
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.new(0.5, 0, 0.5, 0),
 			Size = UDim2.new(0.7, 0, 0.7, 0),
@@ -738,8 +757,9 @@ function Library:MakeWindow(WindowConfig)
 			}), "Text")
 		})
 
-		if GetIcon(TabConfig.Icon) ~= nil then
-			TabFrame.Ico.Image = GetIcon(TabConfig.Icon)
+		local icon = GetIcon(TabConfig.Icon)
+		if icon then
+			TabFrame.Ico.Image = icon
 		end	
 
 		local Container = AddThemeObject(SetChildren(SetProps(MakeElement("ScrollFrame", Color3.fromRGB(255, 255, 255), 5), {
@@ -1448,7 +1468,7 @@ function Library:MakeWindow(WindowConfig)
 					ScaleType = Enum.ScaleType.Fit,
 					AnchorPoint = Vector2.new(0.5, 0.5),
 					BackgroundTransparency = 1,
-					Image = "http://www.roblox.com/asset/?id=4805639000"
+					Image = "rbxassetid://4805639000"
 				})
 
 				local HueSelection = Create("ImageLabel", {
@@ -1457,7 +1477,7 @@ function Library:MakeWindow(WindowConfig)
 					ScaleType = Enum.ScaleType.Fit,
 					AnchorPoint = Vector2.new(0.5, 0.5),
 					BackgroundTransparency = 1,
-					Image = "http://www.roblox.com/asset/?id=4805639000"
+					Image = "rbxassetid://4805639000"
 				})
 
 				local Color = Create("ImageLabel", {
