@@ -448,12 +448,12 @@ function Library:MakeWindow(WindowConfig)
 	if WindowConfig.IntroEnabled == nil then
 		WindowConfig.IntroEnabled = true
 	end
-	WindowConfig.IntroToggleIcon = WindowConfig.IntroToggleIcon or "rbxassetid://94688225437223"
+	WindowConfig.IntroToggleIcon = WindowConfig.IntroToggleIcon or "rbxassetid://74821644388108"
 	WindowConfig.IntroText = WindowConfig.IntroText or "Starting EldarX..."
 	WindowConfig.CloseCallback = WindowConfig.CloseCallback or function() end
 	WindowConfig.ShowIcon = WindowConfig.ShowIcon or false
-	WindowConfig.Icon = WindowConfig.Icon or "rbxassetid://94688225437223"
-	WindowConfig.IntroIcon = WindowConfig.IntroIcon or "rbxassetid://94688225437223"
+	WindowConfig.Icon = WindowConfig.Icon or "rbxassetid://74821644388108"
+	WindowConfig.IntroIcon = WindowConfig.IntroIcon or "rbxassetid://74821644388108"
 	WindowConfig.DiscordLink = WindowConfig.DiscordLink or "discord.gg/MERZrq"
 	Library.Folder = WindowConfig.ConfigFolder
 	Library.SaveCfg = WindowConfig.SaveConfig
