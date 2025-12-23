@@ -34,7 +34,7 @@ local function GetIcon(IconName)
 	end
 	-- Für bekannte Icon-Namen, gib entsprechende Asset-IDs zurück
 	local iconMap = {
-		["rbxassetid://94688225437223"] = "rbxassetid://94688225437223",
+		["rbxassetid://94688225437223"] = "rbxassetid://120536320464344",
 		["rbxassetid://7072725342"] = "rbxassetid://7072725342", -- Close icon
 		["rbxassetid://7072719338"] = "rbxassetid://7072719338", -- Minimize icon
 		["rbxassetid://7072720870"] = "rbxassetid://7072720870", -- Maximize icon
