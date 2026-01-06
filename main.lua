@@ -1,4 +1,26 @@
-OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/Fragmora/fragmora.script/refs/heads/main/orion.lua", true))()
+-- Korrigierte OrionLib-Loading Methode
+local success, OrionLib = pcall(function()
+    -- Versuche die Executor-Methode zuerst
+    return loadstring(game:HttpGetAsync("https://raw.githubusercontent.com/Fragmora/fragmora.script/refs/heads/main/orion.lua"))()
+end)
+
+if not success then
+    -- Fallback auf HttpService
+    local HttpService = game:GetService("HttpService")
+    local OrionLibScript = HttpService:GetAsync("https://raw.githubusercontent.com/Fragmora/fragmora.script/refs/heads/main/orion.lua")
+    OrionLib = loadstring(OrionLibScript)()
+end
+
+-- Falls immer noch nil, versuche eine andere Methode
+if not OrionLib then
+    OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/Fragmora/fragmora.script/refs/heads/main/orion.lua", true))()
+end
+
+-- Falls alles fehlschlägt, gib eine Fehlermeldung aus
+if not OrionLib then
+    error("Failed to load OrionLib")
+    return
+end
 
 Window = OrionLib:MakeWindow({
     Name = ".gg/MERzRQ2UHn | Heavenly | Emergency Hamburg",
