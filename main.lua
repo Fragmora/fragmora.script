@@ -1,42 +1,69 @@
-OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/Fragmora/fragmora.script/refs/heads/main/orion.lua", true))()
 
--- ADD THIS AT THE VERY TOP after loading OrionLib
-local Settings = {}
-
--- FIX 1: Create missing settings functions
-function GetSetting(key, default)
-    return OrionLib.Settings[key] or default or false
-end
-
-function SaveSetting(key, value)
-    OrionLib.Settings[key] = value
-    OrionLib:SaveSettings()
-end
-
--- FIX 2: Create global utilities table
-local Utilities = {
-    Connections = {},
-    Objects = {},
-    Debounces = {}
+local Settings = {
+    FileName = "HeavenlyEHcfg.txt"
 }
 
-function Utilities:Cleanup()
-    for _, connection in pairs(self.Connections) do
-        if connection then
-            connection:Disconnect()
+
+local UserSettings = {}
+
+function Settings:Save(data)
+    if writefile then
+        local success, errorMsg = pcall(function()
+            writefile(self.FileName, game:GetService("HttpService"):JSONEncode(data))
+        end)
+
+        if success then
+            print("Settings Saved")
+        else
+            warn("Could not save:", errorMsg)
         end
     end
-    self.Connections = {}
-    
-    for _, object in pairs(self.Objects) do
-        if object and object:IsA("Instance") then
-            object:Destroy()
-        end
-    end
-    self.Objects = {}
 end
 
-Window = OrionLib:MakeWindow({
+function Settings:Load()
+    local loadedSettings = {}
+
+    if isfile and isfile(self.FileName) then
+        local success, data = pcall(function()
+            return game:GetService("HttpService"):JSONDecode(readfile(self.FileName))
+        end)
+
+        if success and data then
+            loadedSettings = data
+        end
+    end
+    
+    return loadedSettings
+end
+
+
+UserSettings = Settings:Load() or {}
+
+
+local function AutoSave()
+    task.wait(0.5)
+    Settings:Save(UserSettings)
+end
+
+
+local function GetSetting(key, defaultValue)
+    if UserSettings[key] ~= nil then
+        return UserSettings[key]
+    end
+    return defaultValue
+end
+
+
+local function SaveSetting(key, value)
+    UserSettings[key] = value
+    task.spawn(AutoSave)
+end
+
+
+local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/Fragmora/fragmora.script/refs/heads/main/orion.lua"))()
+
+
+local Window = OrionLib:MakeWindow({
     Name = ".gg/MERzRQ2UHn | Heavenly | Emergency Hamburg",
     HidePremium = false,
     SaveConfig = true,
@@ -54,7 +81,8 @@ TweenService = game:GetService("TweenService")
 HttpService = game:GetService("HttpService")
 ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-TabCredits = Window:MakeTab({
+-- creds ja
+local TabCredits = Window:MakeTab({
     Name = "Credits",
     Icon = "rbxassetid://123810491451954"
 })
@@ -73,59 +101,59 @@ TabCredits:AddButton({
 })
 TabCredits:AddParagraph("Ver 1.7.60")
 
-AimbotTab = Window:MakeTab({
+local AimbotTab = Window:MakeTab({
     Name = "Aimbot",
     Icon = "rbxassetid://121615146959714",
     PremiumOnly = false
 })
 
-GunModsTab = Window:MakeTab({
+local GunModsTab = Window:MakeTab({
     Name = "Gun Mods",
     Icon = "rbxassetid://98732304151282",
     PremiumOnly = false
 })
 
-TeleportsTab = Window:MakeTab({
+local TeleportsTab = Window:MakeTab({
     Name = "Teleport",
     Icon = "rbxassetid://112398672404328",
     PremiumOnly = false
 })
 
-ESPTab = Window:MakeTab({
+local ESPTab = Window:MakeTab({
     Name = "Visuals",
     Icon = "rbxassetid://78678714479511",
     PremiumOnly = false
 })
 
-VehicleModsTab = Window:MakeTab({
+local VehicleModsTab = Window:MakeTab({
     Name = "Vehicle Mods",
     Icon = "rbxassetid://106736790731856",
     PremiumOnly = false
 })
 
-VehicleModsTab2 = Window:MakeTab({
+local VehicleModsTab2 = Window:MakeTab({
     Name = "Vehicle Misc",
     Icon = "rbxassetid://90284918615637",
     PremiumOnly = false
 })
 
-PoliceTab = Window:MakeTab({
+local PoliceTab = Window:MakeTab({
     Name = "Police",
     Icon = "rbxassetid://97578883834004"
 })
 
-PlayerTab = Window:MakeTab({
+local PlayerTab = Window:MakeTab({
     Name = "Player",
     Icon = "rbxassetid://110701632373035"
 })
 
-AnimTab = Window:MakeTab({
+local AnimTab = Window:MakeTab({
     Name = "Animations",
     Icon = "rbxassetid://82823113185452",
     PremiumOnly = false
 })
 
-MiscTab = Window:MakeTab({
+local MiscTab = Window:MakeTab({
     Name = "Misc",
     Icon = "rbxassetid://128593575467422",
     PremiumOnly = false
@@ -135,13 +163,13 @@ AimbotTab:AddSection({
     Name = "Aimbot"
 })
 
-AimbotEnabled = false
-AimbotKey = Enum.KeyCode.B
-AimPart = "HumanoidRootPart"
-TeamCheck = true
-AimbotSmoothness = 0.2
-Prediction = false
-KnockedHealthThreshold = 24
+local AimbotEnabled = false
+local AimbotKey = Enum.KeyCode.B
+local AimPart = "HumanoidRootPart"
+local TeamCheck = true
+local AimbotSmoothness = 0.2
+local Prediction = false
+local KnockedHealthThreshold = 24
 
 AimbotTab:AddToggle({
     Name = "Aimbot",
@@ -210,17 +238,47 @@ AimbotTab:AddToggle({
     end
 })
 
-function getPredictedPosition(player, offset)
+-- aimbot Logic
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local AutoTaserConfig = {
+    enabled = false,
+    maxRange = 50,
+    prediction = 0.15,
+    lastFire = 0,
+    cooldown = 0.3,
+    debugMode = true
+}
+
+local AntiCheatBypass = {
+    enabled = false,
+    velocityLimit = 500,
+    lastBypassTime = 0,
+    bypassInterval = 5
+}
+
+local ImprovedCarFlySettings = {
+    enabled = false,
+    maxSpeed = 120,
+    smoothing = 0.15
+}
+
+
+
+local function getPredictedPosition(player, offset)
     return player.Character[AimPart].Position + player.Character[AimPart].Velocity * offset
 end
 
-function getBestTarget()
-    Camera = workspace.CurrentCamera
-    bestTarget = nil
-    closestDistance = math.huge
-    LocalPlayerTeam = LocalPlayer.Team
+local function getBestTarget()
+    local Camera = workspace.CurrentCamera
+    local bestTarget = nil
+    local closestDistance = math.huge
+    local LocalPlayerTeam = LocalPlayer.Team
 
-    function isEnemy(player)
+    local function isEnemy(player)
         if not player.Team then return true end
         if LocalPlayerTeam.Name == "Citizen" then
             return player.Team.Name == "Police"
@@ -232,11 +290,11 @@ function getBestTarget()
 
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild(AimPart) and (not TeamCheck or isEnemy(player)) then
-            humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+            local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
             if not humanoid or humanoid.Health > KnockedHealthThreshold then
-                screenPos, onScreen = Camera:WorldToScreenPoint(player.Character[AimPart].Position)
+                local screenPos, onScreen = Camera:WorldToScreenPoint(player.Character[AimPart].Position)
                 if onScreen then
-                    magnitude = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)).Magnitude
+                    local magnitude = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)).Magnitude
                     if magnitude < closestDistance then
                         closestDistance = magnitude
                         bestTarget = player
@@ -249,31 +307,32 @@ function getBestTarget()
 end
 
 RunService.RenderStepped:Connect(function()
-    if AimbotEnabled and UIS:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
-        target = getBestTarget()
+    if AimbotEnabled and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
+        local target = getBestTarget()
         if target and target.Character and target.Character:FindFirstChild(AimPart) then
-            Camera = workspace.CurrentCamera
-            targetPosition = target.Character[AimPart].Position
+            local Camera = workspace.CurrentCamera
+            local targetPosition = target.Character[AimPart].Position
             if Prediction then
                 targetPosition = getPredictedPosition(target, 0.2)
             end
 
-            currentLookVector = Camera.CFrame.LookVector
-            targetLookVector = (targetPosition - Camera.CFrame.Position).Unit
+            local currentLookVector = Camera.CFrame.LookVector
+            local targetLookVector = (targetPosition - Camera.CFrame.Position).Unit
             
-            smoothnessFactor = math.clamp(1 - AimbotSmoothness, 0.01, 0.99)
+            local smoothnessFactor = math.clamp(1 - AimbotSmoothness, 0.01, 0.99)
             
-            newLookVector = currentLookVector:Lerp(targetLookVector, smoothnessFactor)
+            local newLookVector = currentLookVector:Lerp(targetLookVector, smoothnessFactor)
             Camera.CFrame = CFrame.new(Camera.CFrame.Position, Camera.CFrame.Position + newLookVector)
         end
     end
 end)
 
+
 GunModsTab:AddSection({
     Name = "Weapon Mods"
 })
 
-WeaponData = {
+local WeaponData = {
     weaponList = { "G36", "M4 Carbine", "M58B Shotgun", "MP5", "Glock 17", "Sniper" },
     mods = {
         { name = "Fast Fire", attribute = "ShootDelay", saved = {}, active = false },
@@ -305,7 +364,7 @@ end
 function setupForCharacter(char, mod)
     mod.saved = {}
     for _, weaponName in ipairs(WeaponData.weaponList) do
-        weapon = char:FindFirstChild(weaponName)
+        local weapon = char:FindFirstChild(weaponName)
         if weapon then
             applyMod(weapon, mod)
         end
@@ -332,14 +391,14 @@ for _, mod in ipairs(WeaponData.mods) do
             mod.active = val
             if val and LocalPlayer.Character then
                 for _, weaponName in ipairs(WeaponData.weaponList) do
-                    weapon = LocalPlayer.Character:FindFirstChild(weaponName)
+                    local weapon = LocalPlayer.Character:FindFirstChild(weaponName)
                     if weapon then
                         applyMod(weapon, mod)
                     end
                 end
             else
                 for weaponName, originalValue in pairs(mod.saved) do
-                    weapon = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild(weaponName)
+                    local weapon = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild(weaponName)
                     if weapon then
                         pcall(function()
                             weapon:SetAttribute(mod.attribute, originalValue)
@@ -351,7 +410,7 @@ for _, mod in ipairs(WeaponData.mods) do
     })
 end
 
-BulletTracerSettings = {
+local BulletTracerSettings = {
     Enabled = false,
     Color = Color3.fromRGB(255, 255, 0),
     Thickness = 0.1,
@@ -362,12 +421,12 @@ BulletTracerSettings = {
     ImpactSize = 0.5
 }
 
-ActiveTracers = {}
+local ActiveTracers = {}
 
-function CreateBulletTracer(startPos, endPos)
+local function CreateBulletTracer(startPos, endPos)
     if not BulletTracerSettings.Enabled then return end
 
-    beam = Instance.new("Part")
+    local beam = Instance.new("Part")
     beam.Name = "BulletTracer"
     beam.Anchored = true
     beam.CanCollide = false
@@ -378,7 +437,7 @@ function CreateBulletTracer(startPos, endPos)
     beam.Parent = workspace
 
     if BulletTracerSettings.ShowImpact then
-        impact = Instance.new("Part")
+        local impact = Instance.new("Part")
         impact.Name = "ImpactEffect"
         impact.Shape = Enum.PartType.Ball
         impact.Anchored = true
@@ -392,15 +451,15 @@ function CreateBulletTracer(startPos, endPos)
         table.insert(ActiveTracers, impact)
     end
 
-    table.insert(ActiveTracers, beam)
+    table.insert(ActiveTracers.beam)
 
     if BulletTracerSettings.FadeOut then
         task.spawn(function()
-            startTime = tick()
-            duration = BulletTracerSettings.Lifetime
+            local startTime = tick()
+            local duration = BulletTracerSettings.Lifetime
 
             while tick() - startTime < duration do
-                alpha = 1 - ((tick() - startTime) / duration)
+                local alpha = 1 - ((tick() - startTime) / duration)
                 beam.Transparency = 1 - alpha
                 task.wait()
             end
@@ -414,40 +473,41 @@ function CreateBulletTracer(startPos, endPos)
     end
 end
 
-function getCurrentGun(char)
+local function getcGun(char)
     if not char then return end
 
-    humanoid = char:FindFirstChildOfClass("Humanoid")
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
     if humanoid then
-        tool = humanoid:FindFirstChildOfClass("Tool")
+        local tool = humanoid:FindFirstChildOfClass("Tool")
         if tool and table.find(WeaponData.weaponList, tool.Name) then 
             return tool
         end
     end
 
     for _, weaponName in ipairs(WeaponData.weaponList) do
-        weapon = char:FindFirstChild(weaponName)
+        local weapon = char:FindFirstChild(weaponName)
         if weapon then
             return weapon
         end
     end
 end
 
-function HookBulletTracers()
-    RepStorage = game:GetService("ReplicatedStorage")
-    GunShotRemote = RepStorage.WvO:WaitForChild("5ce26a5c-fea4-476b-8e93-0246aa5d6729")
+local function HookBulletTracers()
 
-    oldFireServer = GunShotRemote.FireServer
+    local RepStorage = game:GetService("ReplicatedStorage")
+    local GunShotRemote = RepStorage.WvO:WaitForChild("5ce26a5c-fea4-476b-8e93-0246aa5d6729")
+
+    local oldFireServer = GunShotRemote.FireServer
     GunShotRemote.FireServer = function(self, ...)
-        args = {...}
+        local args = {...}
 
         if args[2] and args[3] then
-            char = LocalPlayer.Character
+            local char = LocalPlayer.Character
             if char then
-                gun = getCurrentGun(char)
+                local gun = getCurrentGun(char)
                 if gun and gun:FindFirstChild("Handle") then
-                    startPos = gun.Handle.Position
-                    endPos = args[2]
+                    local startPos = gun.Handle.Position
+                    local endPos = args[2]
 
                     CreateBulletTracer(startPos, endPos)
                 end
@@ -460,7 +520,7 @@ end
 
 HookBulletTracers()
 
-HitMarkerSettings = {
+local HitMarkerSettings = {
     Enabled = false,
     Visual = true,
     Sound = true,
@@ -475,9 +535,9 @@ HitMarkerSettings = {
     KillSound = "rbxassetid://5943191628",
 }
 
-HitMarkerGui = nil
+local HitMarkerGui = nil
 
-function CreateHitMarkerGui()
+local function CreateHitMarkerGui()
     if HitMarkerGui then return end
 
     HitMarkerGui = Instance.new("ScreenGui")
@@ -487,24 +547,24 @@ function CreateHitMarkerGui()
     HitMarkerGui.Parent = game.CoreGui
 end
 
-function ShowHitMarker(isHeadshot, damage, isKill)
+local function ShowHitMarker(isHeadshot, damage, isKill)
     if not HitMarkerSettings.Enabled then return end
     if not HitMarkerSettings.Visual then return end
     
     CreateHitMarkerGui()
     
-    screenCenter = workspace.CurrentCamera.ViewportSize / 2
+    local screenCenter = workspace.CurrentCamera.ViewportSize / 2
 
-    marker = Instance.new("Frame")
+    local marker = Instance.new("Frame")
     marker.Name = "HitMarker"
     marker.Size = UDim2.new(0, HitMarkerSettings.Size, 0, HitMarkerSettings.Size)
     marker.Position = UDim2.new(0, screenCenter.X - HitMarkerSettings.Size/2, 0, screenCenter.Y - HitMarkerSettings.Size/2)
     marker.BackgroundTransparency = 1
     marker.Parent = HitMarkerGui
 
-    color = isHeadshot and HitMarkerSettings.Color or HitMarkerSettings.Color
+    local color = isHeadshot and HitMarkerSettings.HeadshotColor or HitMarkerSettings.Color
 
-    linePositions = {
+    local linePositions = {
         {UDim2.new(0, 0, 0, 0), UDim2.new(0.4, 0, 0.4, 0)}, 
         {UDim2.new(0.6, 0, 0, 0), UDim2.new(1, 0, 0.4, 0)}, 
         {UDim2.new(0, 0, 0.6, 0), UDim2.new(0.4, 0, 1, 0)},
@@ -512,7 +572,7 @@ function ShowHitMarker(isHeadshot, damage, isKill)
     }
 
     for _, pos in pairs(linePositions) do
-        line = Instance.new("Frame")
+        local line = Instance.new("Frame")
         line.Size = UDim2.new(0, 2, 0, math.floor(HitMarkerSettings.Size * 0.4))
         line.Position = pos[1]
         line.BackgroundColor3 = color
@@ -522,7 +582,7 @@ function ShowHitMarker(isHeadshot, damage, isKill)
     end
 
     if HitMarkerSettings.ShowDamage and damage then
-        damageLabel = Instance.new("TextLabel")
+        local damageLabel = Instance.new("TextLabel")
         damageLabel.Size = UDim2.new(0, 50, 0, 20)
         damageLabel.Position = UDim2.new(0.5, -25, 1, 5)
         damageLabel.BackgroundTransparency = 1
@@ -535,7 +595,7 @@ function ShowHitMarker(isHeadshot, damage, isKill)
     end
 
     if HitMarkerSettings.Sound then
-        sound = Instance.new("Sound")
+        local sound = Instance.new("Sound")
         if isKill and HitMarkerSettings.KillConfirm then
             sound.SoundId = HitMarkerSettings.KillSound
         elseif isHeadshot then
@@ -553,9 +613,9 @@ function ShowHitMarker(isHeadshot, damage, isKill)
     end
 
     task.spawn(function()
-        startTime = tick()
+        local startTime = tick()
         while tick() - startTime < HitMarkerSettings.Lifetime do
-            alpha = (tick() - startTime) / HitMarkerSettings.Lifetime
+            local alpha = (tick() - startTime) / HitMarkerSettings.Lifetime
             for _, line in pairs(marker:GetChildren()) do
                 if line:IsA("Frame") then
                     line.BackgroundTransparency = alpha
@@ -567,26 +627,28 @@ function ShowHitMarker(isHeadshot, damage, isKill)
     end)
 end
 
-function HookHitMarkers()
-    function MonitorPlayer(player)
+local functuin HookHitMarkers()
+
+    local function MonitorPlayer(player)
         if player == LocalPlayer then return end
 
-        function OnCharacter(char)
-            humanoid = char:WaitForChild("Humanoid")
+        local function OnCharacter(char)
+            local humanoid = char:WaitForChild("Humanoid")
             if not humanoid then return end
 
-            lastHealth = humanoid.Health
+            local lastHealth = humanoid.Health
 
-            humanoid:GetPropertyChangedSignal("Health"):Connect(function()
-                currentHealth = humanoid.Health
+            humanoid:GetPropertyChangedSignal("Health"):Connnect(function()
+                local currentHealth = humanoid.Health
                 if currentHealth < lastHealth then
-                    damage = lastHealth - currentHealth
-                    isKill = currentHealth <= 0
+                    local damage = lastHealth - currentHealth
+                    local isKill = currentHealth <= 0
 
-                    mouse = LocalPlayer:GetMouse()
-                    target = mouse.Target
+                    local mouse = LocalPlayer:GetMouse()
+                    local target = mouse.Target
                     if target and target:IsDescendantOf(char) then
-                        isHeadshot = target.Name == "Head" or target.Parent.Name == "Head"
+
+                        local isHeadshot = target.Name == "Head" or target.Parent.Name == "Head"
                         ShowHitMarker(isHeadshot, damage, isKill)
                     end
                 end
@@ -594,28 +656,24 @@ function HookHitMarkers()
             end)
         end
 
-        if player.Character then
+        if plaer.Character then
             OnCharacter(player.Character)
         end
 
-        player.CharacterAdded:Connect(OnCharacter)
+        for _, player in pairs(Players:GetPlayers()) do
+            MonitorPlayer(player)
+        end
+
+        Players.PlayerAdded:Connect(MonitorPlayer)
     end
 
-    for _, player in pairs(Players:GetPlayers()) do
-        MonitorPlayer(player)
-    end
-
-    Players.PlayerAdded:Connect(MonitorPlayer)
-end
-
-HookHitMarkers()
 
 GunModsTab:AddSection({
     Name = "Weapon Customization"
 })
 
-selectedGunColor = Color3.fromRGB(255, 255, 255)
-selectedGunMaterial = "SmoothPlastic"
+local selectedGunColor = Color3.fromRGB(255, 255, 255)
+local selectedGunMaterial = "SmoothPlastic"
 
 GunModsTab:AddColorpicker({
     Name = "Gun Color",
@@ -649,7 +707,7 @@ GunModsTab:AddDropdown({
 GunModsTab:AddButton({
     Name = "Apply to Current Gun",
     Callback = function()
-        character = LocalPlayer.Character
+        local character = LocalPlayer.Character
         if character then
             for _, tool in pairs(character:GetChildren()) do
                 if tool:IsA("Tool") and table.find(WeaponData.weaponList, tool.Name) then
@@ -670,7 +728,8 @@ GunModsTab:AddButton({
                 end
             end
             
-            backpack = LocalPlayer:FindFirstChild("Backpack")
+            
+            local backpack = LocalPlayer:FindFirstChild("Backpack")
             if backpack then
                 for _, tool in pairs(backpack:GetChildren()) do
                     if tool:IsA("Tool") and table.find(WeaponData.weaponList, tool.Name) then
@@ -705,9 +764,9 @@ GunModsTab:AddSection({
     Name = "Flashlight Color"
 })
 
-sLFc = Color3.fromRGB(255, 255, 255)
-rgbF = false
-flashlightBrightness = 1
+local sLFc = Color3.fromRGB(255, 255, 255)
+local rgbF = false
+local flashlightBrightness = 1
 
 GunModsTab:AddColorpicker({
     Name = "Flashlight Color",
@@ -734,15 +793,16 @@ GunModsTab:AddSlider({
 GunModsTab:AddButton({
     Name = "Apply Flashlight Color",
     Callback = function()
-        character = LocalPlayer.Character
-        gunsFound = 0
+        local character = LocalPlayer.Character
+        local gunsFound = 0
+        
         
         if character then
             for _, tool in pairs(character:GetChildren()) do
                 if tool:IsA("Tool") and table.find(WeaponData.weaponList, tool.Name) then
-                    flashlight = tool:FindFirstChild("Flashlight")
+                    local flashlight = tool:FindFirstChild("Flashlight")
                     if flashlight then
-                        light = flashlight:FindFirstChild("Light")
+                        local light = flashlight:FindFirstChild("Light")
                         if light and (light:IsA("SpotLight") or light:IsA("PointLight") or light:IsA("SurfaceLight")) then
                             light.Color = sLFc
                             light.Brightness = flashlightBrightness
@@ -753,13 +813,14 @@ GunModsTab:AddButton({
             end
         end
         
-        backpack = LocalPlayer:FindFirstChild("Backpack")
+        
+        local backpack = LocalPlayer:FindFirstChild("Backpack")
         if backpack then
             for _, tool in pairs(backpack:GetChildren()) do
                 if tool:IsA("Tool") and table.find(WeaponData.weaponList, tool.Name) then
-                    flashlight = tool:FindFirstChild("Flashlight")
+                    local flashlight = tool:FindFirstChild("Flashlight")
                     if flashlight then
-                        light = flashlight:FindFirstChild("Light")
+                        local light = flashlight:FindFirstChild("Light")
                         if light and (light:IsA("SpotLight") or light:IsA("PointLight") or light:IsA("SurfaceLight")) then
                             light.Color = sLFc
                             light.Brightness = flashlightBrightness
@@ -794,17 +855,18 @@ GunModsTab:AddToggle({
         if val then
             task.spawn(function()
                 while rgbF do
-                    hue = (tick() % 5) / 5
-                    color = Color3.fromHSV(hue, 1, 1)
+                    local hue = (tick() % 5) / 5
+                    local color = Color3.fromHSV(hue, 1, 1)
                     
-                    character = LocalPlayer.Character
+                    local character = LocalPlayer.Character
+                    
                     
                     if character then
                         for _, tool in pairs(character:GetChildren()) do
                             if tool:IsA("Tool") and table.find(WeaponData.weaponList, tool.Name) then
-                                flashlight = tool:FindFirstChild("Flashlight")
+                                local flashlight = tool:FindFirstChild("Flashlight")
                                 if flashlight then
-                                    light = flashlight:FindFirstChild("Light")
+                                    local light = flashlight:FindFirstChild("Light")
                                     if light and (light:IsA("SpotLight") or light:IsA("PointLight") or light:IsA("SurfaceLight")) then
                                         light.Color = color
                                         light.Brightness = flashlightBrightness
@@ -814,13 +876,14 @@ GunModsTab:AddToggle({
                         end
                     end
                     
-                    backpack = LocalPlayer:FindFirstChild("Backpack")
+                    
+                    local backpack = LocalPlayer:FindFirstChild("Backpack")
                     if backpack then
                         for _, tool in pairs(backpack:GetChildren()) do
                             if tool:IsA("Tool") and table.find(WeaponData.weaponList, tool.Name) then
-                                flashlight = tool:FindFirstChild("Flashlight")
+                                local flashlight = tool:FindFirstChild("Flashlight")
                                 if flashlight then
-                                    light = flashlight:FindFirstChild("Light")
+                                    local light = flashlight:FindFirstChild("Light")
                                     if light and (light:IsA("SpotLight") or light:IsA("PointLight") or light:IsA("SurfaceLight")) then
                                         light.Color = color
                                         light.Brightness = flashlightBrightness
@@ -837,19 +900,20 @@ GunModsTab:AddToggle({
     end
 })
 
+
 GunModsTab:AddButton({
     Name = "Reset Flashlight to Default",
     Callback = function()
-        character = LocalPlayer.Character
-        backpack = LocalPlayer:FindFirstChild("Backpack")
-        resetCount = 0
+        local character = LocalPlayer.Character
+        local backpack = LocalPlayer:FindFirstChild("Backpack")
+        local resetCount = 0
         
         if character then
             for _, tool in pairs(character:GetChildren()) do
                 if tool:IsA("Tool") and table.find(WeaponData.weaponList, tool.Name) then
-                    flashlight = tool:FindFirstChild("Flashlight")
+                    local flashlight = tool:FindFirstChild("Flashlight")
                     if flashlight then
-                        light = flashlight:FindFirstChild("Light")
+                        local light = flashlight:FindFirstChild("Light")
                         if light and (light:IsA("SpotLight") or light:IsA("PointLight") or light:IsA("SurfaceLight")) then
                             light.Color = Color3.fromRGB(255, 255, 255)
                             light.Brightness = 1
@@ -861,26 +925,27 @@ GunModsTab:AddButton({
         end
         
         if backpack then
-            for _, tool in pairs(backpack:GetChildren()) do
-                if tool:IsA("Tool") and table.find(WeaponData.weaponList, tool.Name) then
-                    flashlight = tool:FindFirstChild("Flashlight")
-                    if flashlight then
-                        light = flashlight:FindFirstChild("Light")
-                        if light and (light:IsA("SpotLight") or light:IsA("PointLight") or light:IsA("SurfaceLight")) then
-                            light.Color = Color3.fromRGB(255, 255, 255)
-                            
-                            if light:GetAttribute("Brightness") then
-                                light:SetAttribute("Brightness", 1)
-                            else
-                                light.Brightness = 1
-                            end
-                            
-                            resetCount = resetCount + 1
-                        end
+    for _, tool in pairs(backpack:GetChildren()) do
+        if tool:IsA("Tool") and table.find(WeaponData.weaponList, tool.Name) then
+            local flashlight = tool:FindFirstChild("Flashlight")
+            if flashlight then
+                local light = flashlight:FindFirstChild("Light")
+                if light and (light:IsA("SpotLight") or light:IsA("PointLight") or light:IsA("SurfaceLight")) then
+                    light.Color = Color3.fromRGB(255, 255, 255)
+                    
+                    
+                    if light:GetAttribute("Brightness") then
+                        light:SetAttribute("Brightness", 1)
+                    else
+                        light.Brightness = 1
                     end
+                    
+                    resetCount = resetCount + 1
                 end
             end
         end
+    end
+end
         
         OrionLib:MakeNotification({
             Name = "Flashlight Reset",
@@ -888,12 +953,13 @@ GunModsTab:AddButton({
             Time = 3
         })
     end
-})
+}) 
+
 
 selfReviveEnabled = false
 selfReviveKey = Enum.KeyCode.P
 
-function vu401()
+vu401 = function()
     if not LocalPlayer.Character then
         return true
     end
@@ -901,7 +967,7 @@ function vu401()
     return not v400 and true or v400.Health < 30
 end
 
-function vu407()
+vu407 = function()
     v402 = workspace:FindFirstChild("Vehicles")
     if v402 then
         v402 = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
@@ -919,7 +985,7 @@ function vu407()
     end
 end
 
-function vu410()
+vu410 = function()
     v408 = LocalPlayer.Character
     if v408 then
         v409 = v408:FindFirstChildWhichIsA("Humanoid")
@@ -929,7 +995,7 @@ function vu410()
     end
 end
 
-function vu415()
+vu415 = function()
     v411 = workspace.Buildings and (workspace.Buildings:FindFirstChild("Hospital") and workspace.Buildings.Hospital:FindFirstChild("HospitalBed"))
     if v411 then
         v411 = workspace.Buildings.Hospital.HospitalBed:FindFirstChild("Seat")
@@ -949,7 +1015,7 @@ function vu415()
     end
 end
 
-function tweenObjectToPosition(obj, targetPos, speed)
+tweenObjectToPosition = function(obj, targetPos, speed)
     if not obj or not obj.PrimaryPart then return false end
     
     startPosition = obj.PrimaryPart.Position
@@ -977,7 +1043,7 @@ function tweenObjectToPosition(obj, targetPos, speed)
     return true
 end
 
-function selfReviveSequence()
+selfReviveSequence = function()
     if vu401() then
         v416 = LocalPlayer.Character
         if not v416 then
@@ -1021,7 +1087,7 @@ function selfReviveSequence()
     end
 end
 
-function checkAndRevive()
+checkAndRevive = function()
     if selfReviveEnabled and LocalPlayer.Character then
         humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
         if humanoid and humanoid.Health <= 0 then
@@ -1054,7 +1120,7 @@ locationCoordinates = {
     ["Truck Company"] = CFrame.new(652.55, 5.638, 1510.85)
 }
 
-function bCtM()
+bCtM = function()
     vehicle = VehiclesFolder:FindFirstChild(LocalPlayer.Name)
     if vehicle and LocalPlayer.Character then
         hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -1067,7 +1133,7 @@ function bCtM()
     return false
 end
 
-function enterVehicle()
+enterVehicle = function()
     vehicle = VehiclesFolder:FindFirstChild(LocalPlayer.Name)
     if vehicle then
         driveSeat = vehicle:FindFirstChild("DriveSeat", true)
@@ -1083,7 +1149,7 @@ function enterVehicle()
     return false
 end
 
-function tweenVehicleToPosition(vehicle, targetPos, speed)
+tweenVehicleToPosition = function(vehicle, targetPos, speed)
     if not vehicle or not vehicle.PrimaryPart then return false end
     
     startPosition = vehicle.PrimaryPart.Position
@@ -1111,7 +1177,7 @@ function tweenVehicleToPosition(vehicle, targetPos, speed)
     return true
 end
 
-function teleportToLocation(locationName)
+teleportToLocation = function(locationName)
     location = locationCoordinates[locationName]
     if not location then return end
     
@@ -1232,6 +1298,7 @@ spawn(function()
     end
 end)
 
+
 plr = Players.LocalPlayer
 
 state = {
@@ -1262,12 +1329,12 @@ SkeletonBones = {
     {"LeftLowerLeg","LeftFoot"},
     {"LowerTorso","RightUpperLeg"},
     {"RightUpperLeg","RightLowerLeg"},
-    {"RightUpperLeg","RightFoot"},
+    {"RightLowerLeg","RightFoot"},
 }
 
-function teamColorForTeam(team)
+teamColorForTeam = function(team)
     if not team then return Color3.fromRGB(200,200,200) end
-    tn = tostring(team.Name):lower()
+    local tn = tostring(team.Name):lower()
     if tn:find("police") then
         return Color3.fromRGB(80,160,255)
     elseif tn:find("fire") then
@@ -1279,10 +1346,10 @@ function teamColorForTeam(team)
     end
 end
 
-function createSkeleton()
-    t = {}
+createSkeleton = function()
+    local t = {}
     for i = 1, #SkeletonBones do
-        l = Drawing.new("Line")
+        local l = Drawing.new("Line")
         l.Thickness = 1.5
         l.Transparency = 1
         l.Visible = false
@@ -1291,14 +1358,14 @@ function createSkeleton()
     return t
 end
 
-function createESPForPlayer(other)
+createESPForPlayer = function(other)
     if not other.Character then return end
     if state.espObjects[other.UserId] then return end
 
-    hrp = other.Character:FindFirstChild("HumanoidRootPart")
+    local hrp = other.Character:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
 
-    billboard = Instance.new("BillboardGui")
+    local billboard = Instance.new("BillboardGui")
     billboard.Name = "ESP_" .. other.Name
     billboard.Adornee = hrp
     billboard.Size = UDim2.new(0,160,0,100)
@@ -1306,8 +1373,8 @@ function createESPForPlayer(other)
     billboard.AlwaysOnTop = true
     billboard.Parent = other.Character
 
-    function newLabel(yOffset, color)
-        lbl = Instance.new("TextLabel", billboard)
+    local newLabel = function(yOffset, color)
+        local lbl = Instance.new("TextLabel", billboard)
         lbl.Size = UDim2.new(1,0,0,18)
         lbl.Position = UDim2.new(0,0,0,yOffset)
         lbl.BackgroundTransparency = 1
@@ -1329,31 +1396,31 @@ function createESPForPlayer(other)
     }
 end
 
-function updateESPEntry(other)
-    entry = state.espObjects[other.UserId]
+updateESPEntry = function(other)
+    local entry = state.espObjects[other.UserId]
     if not entry then return end
 
-    char = other.Character
+    local char = other.Character
     if not char then return end
 
-    hrp = char:FindFirstChild("HumanoidRootPart")
-    hum = char:FindFirstChildOfClass("Humanoid")
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChildOfClass("Humanoid")
     if not hrp or not hum or hum.Health <= 0 then
         entry.billboard.Enabled = false
         return
     end
 
-    plrRoot = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
+    local plrRoot = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
     if not plrRoot then return end
 
-    dist = (plrRoot.Position - hrp.Position).Magnitude
+    local dist = (plrRoot.Position - hrp.Position).Magnitude
     if dist > state.espDistance then
         entry.billboard.Enabled = false
         return
     end
 
     entry.billboard.Enabled = true
-    teamColor = teamColorForTeam(other.Team)
+    local teamColor = teamColorForTeam(other.Team)
 
     entry.nameLbl.Text = state.showNames and other.Name or ""
     entry.nameLbl.TextColor3 = teamColor
@@ -1362,7 +1429,7 @@ function updateESPEntry(other)
     entry.healthLbl.Text = state.showHealth and ("HP: "..math.floor(hum.Health)) or ""
 
     if state.showEquipped then
-        tool = char:FindFirstChildOfClass("Tool")
+        local tool = char:FindFirstChildOfClass("Tool")
         entry.equipLbl.Text = tool and ("Equipped: "..tool.Name) or "Nothing Equipped"
     else
         entry.equipLbl.Text = ""
@@ -1381,8 +1448,8 @@ function updateESPEntry(other)
     end
 end
 
-function updateSkeleton(other)
-    entry = state.espObjects[other.UserId]
+updateSkeleton = function(other)
+    local entry = state.espObjects[other.UserId]
     if not entry or not state.showSkeleton or not state.espEnabled then
         if entry and entry.skeleton then
             for _,l in ipairs(entry.skeleton) do l.Visible = false end
@@ -1390,17 +1457,17 @@ function updateSkeleton(other)
         return
     end
 
-    char = other.Character
-    cam = workspace.CurrentCamera
+    local char = other.Character
+    local cam = workspace.CurrentCamera
     if not char then return end
 
     for i,b in ipairs(SkeletonBones) do
-        a = char:FindFirstChild(b[1])
-        c = char:FindFirstChild(b[2])
-        l = entry.skeleton[i]
+        local a = char:FindFirstChild(b[1])
+        local c = char:FindFirstChild(b[2])
+        local l = entry.skeleton[i]
         if a and c then
-            p1,v1 = cam:WorldToViewportPoint(a.Position)
-            p2,v2 = cam:WorldToViewportPoint(c.Position)
+            local p1,v1 = cam:WorldToViewportPoint(a.Position)
+            local p2,v2 = cam:WorldToViewportPoint(c.Position)
             if v1 and v2 then
                 l.From = Vector2.new(p1.X,p1.Y)
                 l.To = Vector2.new(p2.X,p2.Y)
@@ -1415,13 +1482,13 @@ function updateSkeleton(other)
     end
 end
 
-lastESPUpdate = 0
-lastSkelUpdate = 0
-ESP_UPDATE_INTERVAL = 0.2
-SKEL_INTERVAL = 1/120
+local lastESPUpdate = 0
+local lastSkelUpdate = 0
+local ESP_UPDATE_INTERVAL = 0.2
+local SKEL_INTERVAL = 1/120
 
 RunService.RenderStepped:Connect(function()
-    t = tick()
+    local t = tick()
 
     if state.espEnabled and t - lastESPUpdate >= ESP_UPDATE_INTERVAL then
         for _,p in ipairs(Players:GetPlayers()) do
@@ -1455,7 +1522,7 @@ Players.PlayerAdded:Connect(function(p)
 end)
 
 Players.PlayerRemoving:Connect(function(p)
-    entry = state.espObjects[p.UserId]
+    local entry = state.espObjects[p.UserId]
     if entry then
         if entry.billboard then entry.billboard:Destroy() end
         if entry.skeleton then
@@ -1594,7 +1661,7 @@ ESPTab:AddSection({
     Name = "Chams"
 })
 
-ChamsSettings = {
+local ChamsSettings = {
     Enabled = false,
     PlayersEnabled = true,
     VehiclesEnabled = true,
@@ -1605,12 +1672,12 @@ ChamsSettings = {
     ActiveHighlights = {}
 }
 
-function createHighlight(object, color, transparency)
+local function createHighlight(object, color, transparency)
     if object:FindFirstChild("ChamsHighlight") then
         object.ChamsHighlight:Destroy()
     end
     
-    highlight = Instance.new("Highlight")
+    local highlight = Instance.new("Highlight")
     highlight.Name = "ChamsHighlight"
     highlight.FillColor = color
     highlight.OutlineColor = color
@@ -1621,10 +1688,10 @@ function createHighlight(object, color, transparency)
     return highlight
 end
 
-function updatePlayerChams()
+local function updatePlayerChams()
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character then
-            char = player.Character
+            local char = player.Character
             
             if ChamsSettings.Enabled and ChamsSettings.PlayersEnabled then
                
@@ -1634,12 +1701,12 @@ function updatePlayerChams()
                     end
                 else
                     
-                    color = ChamsSettings.PlayerColor
+                    local color = ChamsSettings.PlayerColor
                     if player.Team then
                         if player.Team.Name == "Police" then
                             color = Color3.fromRGB(0, 100, 255)
                         elseif player.Team.Name == "Citizen" then
-                            hrp = char:FindFirstChild("HumanoidRootPart")
+                            local hrp = char:FindFirstChild("HumanoidRootPart")
                             if hrp and hrp:GetAttribute("IsWanted") then
                                 color = Color3.fromRGB(255, 0, 0)
                             else
@@ -1661,7 +1728,7 @@ function updatePlayerChams()
     end
 end
 
-function updateVehicleChams()
+local function updateVehicleChams()
     for _, vehicle in pairs(workspace.Vehicles:GetChildren()) do
         if vehicle:IsA("Model") then
             if ChamsSettings.Enabled and ChamsSettings.VehiclesEnabled then
@@ -1690,7 +1757,7 @@ Players.PlayerAdded:Connect(function(player)
     player.CharacterAdded:Connect(function()
         task.wait(1)
         updatePlayerChams()
-    end
+    end)
 end)
 
 workspace.Vehicles.ChildAdded:Connect(function()
@@ -1700,7 +1767,7 @@ end)
 
 ESPTab:AddToggle({
     Name = "Enable Chams",
-    Default = GetSetting("EnableChams", false),
+    Default = GetSetting("EnableChams", val),
     Callback = function(val)
         ChamsSettings.Enabled = val
         SaveSetting("EnableChams", val)
@@ -1727,7 +1794,7 @@ ESPTab:AddToggle({
 
 ESPTab:AddToggle({
     Name = "Highlight Players",
-    Default = GetSetting("HighlightPlayers", true),
+    Default = GetSetting("HighlightPlayers", val),
     Callback = function(val)
         ChamsSettings.PlayersEnabled = val
         SaveSetting("HighlightPlayers", val)
@@ -1737,7 +1804,7 @@ ESPTab:AddToggle({
 
 ESPTab:AddToggle({
     Name = "Highlight Vehicles",
-    Default = GetSetting("HighlightVehicles", true),
+    Default = GetSetting("HighlightVehicles", val),
     Callback = function(val)
         ChamsSettings.VehiclesEnabled = val
         SaveSetting("HighlightVehicles", val)
@@ -1758,7 +1825,7 @@ ESPTab:AddSlider({
     Name = "Chams Transparency",
     Min = 0,
     Max = 1,
-    Default = GetSetting("ChamsTransparency", 0.5),
+    Default = GetSetting("ChamsTransparency", val),
     Increment = 0.1,
     Color = Color3.fromRGB(255, 255, 255),
     ValueName = "",
@@ -1772,24 +1839,30 @@ ESPTab:AddSlider({
 
 ESPTab:AddColorpicker({
     Name = "Vehicle Chams Color",
-    Default = GetSetting("VehicleChamsColor", Color3.fromRGB(0, 255, 255)),
+    Default = GetSetting("VehicleChamsColor", val),
     Callback = function(color)
         ChamsSettings.VehicleColor = color
-        SaveSetting("VehicleChamsColor", color)
+        SaveSetting("VehicleChamsColor", val)
         updateVehicleChams()
     end
 })
+
+
+
 
 ESPTab:AddSection({
     Name = "Visual Stuff"
 })
 
-Lighting = game:GetService("Lighting")
 
-fullBrightEnabled = false
-xrayEnabled = false
+local Lighting = game:GetService("Lighting")
 
-originalLighting = {
+
+local fullBrightEnabled = false
+local xrayEnabled = false
+
+
+local originalLighting = {
     Brightness = Lighting.Brightness,
     ClockTime = Lighting.ClockTime,
     FogEnd = Lighting.FogEnd,
@@ -1797,30 +1870,30 @@ originalLighting = {
     OutdoorAmbient = Lighting.OutdoorAmbient
 }
 
-originalPartProperties = {}
 
-originalAtmosphere
+local originalPartProperties = {}
 
 ESPTab:AddToggle({
     Name = "Remove Atmosphere",
     Default = false,
     Callback = function(val)
         if val then
-            atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
-            if atmosphere then
-                originalAtmosphere = atmosphere:Clone()
-                atmosphere:Destroy()
-            end
-        elseif originalAtmosphere then
-            currentAtmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
-            if currentAtmosphere then
-                currentAtmosphere:Destroy()
-            end
-            originalAtmosphere.Parent = Lighting
-            originalAtmosphere = nil
+        local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
+        if atmosphere then
+            originalAtmosphere = atmosphere:Clone()
+            atmosphere:Destroy()
         end
+    elseif originalAtmosphere then
+        local currentAtmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
+        if currentAtmosphere then
+            currentAtmosphere:Destroy()
+        end
+        originalAtmosphere.Parent = Lighting
+        originalAtmosphere = nil
     end
+end
 })
+
 
 ESPTab:AddToggle({
     Name = "Full Bright",
@@ -1842,6 +1915,7 @@ ESPTab:AddToggle({
         end
     end
 })
+
 
 ESPTab:AddToggle({
     Name = "X-Ray",
@@ -1876,11 +1950,12 @@ ESPTab:AddToggle({
     end
 })
 
+
 VehicleModsTab:AddSection({
     Name = "Car Fly"
 })
 
-CarFlySettings = {
+local CarFlySettings = {
     plr = game.Players.LocalPlayer,
     uis = game:GetService("UserInputService"),
     rs = game:GetService("RunService"),
@@ -1900,12 +1975,12 @@ CarFlySettings = {
     defaultCharacterParent = nil
 }
 
-function createFlightGui()
-    screenGui = Instance.new("ScreenGui", game.Players.LocalPlayer.PlayerGui)
+local function createFlightGui()
+    local screenGui = Instance.new("ScreenGui", game.Players.LocalPlayer.PlayerGui)
     screenGui.Name = "FlightControlGui"
     screenGui.Enabled = false
 
-    frame = Instance.new("Frame", screenGui)
+    local frame = Instance.new("Frame", screenGui)
     frame.AnchorPoint = Vector2.new(0.5, 0.5)
     frame.Position = UDim2.new(0.5, 0, 0.8, 0)
     frame.Size = UDim2.new(0, 200, 0, 200)
@@ -1913,49 +1988,51 @@ function createFlightGui()
     frame.BackgroundTransparency = 0.2
     Instance.new("UICorner", frame).CornerRadius = UDim.new(0.1, 0)
 
-    dragging = false
-    dragStart
-    startPos
+    local UIS = game:GetService("UserInputService")
 
-    frame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1
-        or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = frame.Position
+local dragging = false
+local dragStart
+local startPos
 
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
-        end
-    end)
+frame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+    or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = frame.Position
 
-    UIS.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement
-        or input.UserInputType == Enum.UserInputType.Touch) then
-            delta = input.Position - dragStart
-            frame.Position = UDim2.new(
-                startPos.X.Scale,
-                startPos.X.Offset + delta.X,
-                startPos.Y.Scale,
-                startPos.Y.Offset + delta.Y
-            )
-        end
-    end)
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
 
-    buttonSize = UDim2.new(0, 60, 0, 60)
-    buttonPositions = {
+UIS.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement
+    or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        frame.Position = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+    local buttonSize = UDim2.new(0, 60, 0, 60)
+    local buttonPositions = {
         W = UDim2.new(0.5, -30, 0, 0),
         A = UDim2.new(0, 0, 0.5, -30),
         S = UDim2.new(0.5, -30, 1, -60),
         D = UDim2.new(1, -60, 0.5, -30)
     }
-    buttonRotations = { W = 0, A = -90, S = 180, D = 90 }
+    local buttonRotations = { W = 0, A = -90, S = 180, D = 90 }
 
     for key, direction in pairs(CarFlySettings.buttonDirections) do
-        button = Instance.new("ImageButton", frame)
+        local button = Instance.new("ImageButton", frame)
         button.Name = key .. "Button"
         button.Position = buttonPositions[key]
         button.Size = buttonSize
@@ -1978,12 +2055,13 @@ function createFlightGui()
     return screenGui
 end
 
+
 task.spawn(function()
     task.wait(0.5)
     CarFlySettings.flightGui = createFlightGui()
 end)
 
-function setFlightGuiEnabled(enabled)
+local function setFlightGuiEnabled(enabled)
     if not CarFlySettings.flightGui then
         CarFlySettings.flightGui = createFlightGui()
     end
@@ -2038,15 +2116,15 @@ VehicleModsTab:AddToggle({
     end
 })
 
-function forceEnterCar()
-    character = CarFlySettings.plr.Character
+local function forceEnterCar()
+    local character = CarFlySettings.plr.Character
     if not character then return end
-    humanoid = character:FindFirstChild("Humanoid")
+    local humanoid = character:FindFirstChild("Humanoid")
     if not humanoid then return end
-    vehiclesFolder = workspace:FindFirstChild("Vehicles")
-    car = vehiclesFolder and vehiclesFolder:FindFirstChild(CarFlySettings.plr.Name)
+    local vehiclesFolder = workspace:FindFirstChild("Vehicles")
+    local car = vehiclesFolder and vehiclesFolder:FindFirstChild(CarFlySettings.plr.Name)
     if car and car:IsA("Model") then
-        driveSeat = car:FindFirstChild("DriveSeat")
+        local driveSeat = car:FindFirstChild("DriveSeat")
         if driveSeat then
             driveSeat:Sit(humanoid)
         end
@@ -2056,9 +2134,9 @@ end
 task.spawn(function()
     while task.wait(0.5) do
         if CarFlySettings.flightEnabled and not CarFlySettings.safeFlyEnabled then
-            character = CarFlySettings.plr.Character
+            local character = CarFlySettings.plr.Character
             if character then
-                humanoid = character:FindFirstChildOfClass("Humanoid")
+                local humanoid = character:FindFirstChildOfClass("Humanoid")
                 if humanoid and (not humanoid.SeatPart or humanoid.SeatPart.Name ~= "DriveSeat") then
                     forceEnterCar()
                 end
@@ -2070,9 +2148,9 @@ end)
 task.spawn(function()
     while task.wait(5) do
         if CarFlySettings.flightEnabled and CarFlySettings.safeFlyEnabled then
-            character = CarFlySettings.plr.Character
+            local character = CarFlySettings.plr.Character
             if character then
-                humanoid = character:FindFirstChildOfClass("Humanoid")
+                local humanoid = character:FindFirstChildOfClass("Humanoid")
                 if humanoid and humanoid.SeatPart and humanoid.SeatPart.Name == "DriveSeat" then
                     humanoid.Sit = false
                     if not CarFlySettings.safeFlyUsed then
@@ -2087,22 +2165,22 @@ task.spawn(function()
 end)
 
 CarFlySettings.rs.RenderStepped:Connect(function()
-    character = CarFlySettings.plr.Character
+    local character = CarFlySettings.plr.Character
     if not character then return end
 
     if CarFlySettings.flightEnabled then
-        humanoid = character:FindFirstChildOfClass("Humanoid")
-        car = workspace.Vehicles:FindFirstChild(CarFlySettings.plr.Name)
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        local car = workspace.Vehicles:FindFirstChild(CarFlySettings.plr.Name)
         if car then
-            inDriveSeat = humanoid and humanoid.SeatPart and humanoid.SeatPart.Name == "DriveSeat"
+            local inDriveSeat = humanoid and humanoid.SeatPart and humanoid.SeatPart.Name == "DriveSeat"
             if not inDriveSeat and humanoid then
-                driveSeat = car:FindFirstChild("DriveSeat")
+                local driveSeat = car:FindFirstChild("DriveSeat")
                 if driveSeat then
                     driveSeat:Sit(humanoid)
                 end
             end
 
-            driveSeat = car:FindFirstChild("DriveSeat")
+            local driveSeat = car:FindFirstChild("DriveSeat")
             if driveSeat then
                 car.PrimaryPart = car.PrimaryPart or driveSeat
                 if not CarFlySettings.defaultCharacterParent then
@@ -2110,9 +2188,9 @@ CarFlySettings.rs.RenderStepped:Connect(function()
                 end
                 character.Parent = car
 
-                carCFrame = car:GetPrimaryPartCFrame()
-                camLookVector = workspace.CurrentCamera.CFrame.LookVector
-                moveDirection = Vector3.new(
+                local carCFrame = car:GetPrimaryPartCFrame()
+                local camLookVector = workspace.CurrentCamera.CFrame.LookVector
+                local moveDirection = Vector3.new(
                     (CarFlySettings.uis:IsKeyDown(Enum.KeyCode.D) and 1 or 0) - (CarFlySettings.uis:IsKeyDown(Enum.KeyCode.A) and 1 or 0) + CarFlySettings.guiFlightDirection.X,
                     (CarFlySettings.uis:IsKeyDown(Enum.KeyCode.E) and 0.5 or 0) - (CarFlySettings.uis:IsKeyDown(Enum.KeyCode.Q) and 0.5 or 0) + CarFlySettings.guiFlightDirection.Y,
                     (CarFlySettings.uis:IsKeyDown(Enum.KeyCode.S) and 1 or 0) - (CarFlySettings.uis:IsKeyDown(Enum.KeyCode.W) and 1 or 0) + CarFlySettings.guiFlightDirection.Z
@@ -2150,7 +2228,7 @@ CarFlySettings.rs.RenderStepped:Connect(function()
     end
 end)
 
-flingEnabled = false
+local flingEnabled = false
 
 VehicleModsTab:AddSection({
     Name = "Fling"
@@ -2171,29 +2249,29 @@ VehicleModsTab:AddToggle({
     end
 })
 
-flingCooldowns = {}
+local flingCooldowns = {}
 
 RunService.Heartbeat:Connect(function()
     if not flingEnabled then return end
     
-    car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
+    local car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
     if not car then return end
     
-    driveSeat = car:FindFirstChild("DriveSeat")
+    local driveSeat = car:FindFirstChild("DriveSeat")
     if not driveSeat then return end
     
-    humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
     if not humanoid or humanoid.SeatPart ~= driveSeat then return end
     
     for _, part in pairs(driveSeat:GetTouchingParts()) do
         if part:IsA("BasePart") and part.Parent ~= car then
-            otherChar = part.Parent
+            local otherChar = part.Parent
             if otherChar and otherChar:FindFirstChild("Humanoid") then
-                otherHRP = otherChar:FindFirstChild("HumanoidRootPart")
+                local otherHRP = otherChar:FindFirstChild("HumanoidRootPart")
                 if otherHRP then
-                    currentTime = tick()
+                    local currentTime = tick()
                     if not flingCooldowns[otherChar] or currentTime - flingCooldowns[otherChar] > 0.3 then
-                        direction = (otherHRP.Position - driveSeat.Position).Unit
+                        local direction = (otherHRP.Position - driveSeat.Position).Unit
                         
                         for _, carPart in pairs(car:GetDescendants()) do
                             if carPart:IsA("BasePart") then
@@ -2219,9 +2297,15 @@ VehicleModsTab:AddBind({
     end
 })
 
+
 VehicleModsTab:AddSection({
     Name = "Suspension"
 })
+
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local VehiclesFolder = workspace:WaitForChild("Vehicles") 
 
 VehicleModsTab:AddSlider({ 
     Name = "Suspension Height",
@@ -2233,10 +2317,10 @@ VehicleModsTab:AddSlider({
     ValueName = "",
     Callback = function(Value)
         pcall(function()
-            vehicle = VehiclesFolder:FindFirstChild(LocalPlayer.Name)
+            local vehicle = VehiclesFolder:FindFirstChild(LocalPlayer.Name)
             if not vehicle then return end
 
-            driveSeat = vehicle:FindFirstChild("DriveSeat", true)
+            local driveSeat = vehicle:FindFirstChild("DriveSeat", true)
             if not driveSeat then return end
 
             for _, v in pairs(driveSeat:GetChildren()) do
@@ -2251,17 +2335,97 @@ VehicleModsTab:AddSlider({
         end)
     end    
 })
+--[[
+VehicleModsTab:AddSection({
+    Name = "Maybach Suspension"
+})
+_G.bounceSpeed = 0.2
+_G.bounceActive = false
+
+VehicleModsTab:AddToggle({
+    Name = "Bouncy Suspension",
+    Default = false,
+    Callback = function(Value)
+        _G.bounceActive = Value
+
+        if Value then
+            task.spawn(function()
+                local bounceHeight = 1.5
+                local bounceDirection = 1
+                local bounceSpeed = 0.05
+                
+                while _G.bounceActive do
+                    pcall(function()
+                        local vehicle = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
+                        if vehicle then
+                            local driveSeat = vehicle:FindFirstChild("DriveSeat", true)
+                            if driveSeat then
+                                for _, v in pairs(driveSeat:GetChildren()) do
+                                    if v:IsA("SpringConstraint") then
+                                        v.LimitsEnabled = true
+                                        v.MinLength = bounceHeight
+                                        v.MaxLength = bounceHeight
+                                    end
+                                end
+                            end
+                        end
+                end)
+                    
+                    
+                    if bounceHeight >= 2 then
+                        bounceDirection = -1
+                    elseif bounceHeight <= 1.5 then
+                        bounceDirection = 1
+                    end
+                    
+                    bounceHeight = bounceHeight + (_G.bounceSpeed * bounceDirection)
+                    task.wait(0.05)
+                end
+            end)
+        else
+            pcall(function()
+                local vehicle = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
+                if vehicle then
+                    local driveSeat = vehicle:FindFirstChild("DriveSeat", true)
+                    if driveSeat then
+                        for _, v in pairs(driveSeat:GetChildren()) do
+                            if v:IsA("SpringConstraint") then
+                                v.LimitsEnabled = true
+                                v.MinLength = 1.5
+                                v.MaxLength = 1.5
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+    end
+})
+
+VehicleModsTab:AddSlider({
+    Name = "Bounce Speed",
+    Min = 0,
+    Max = 100,
+    Default = 20,
+    Color = Color3.fromRGB(255, 255, 255),
+    Increment = 1,
+    ValueName = "",
+    Callback = function(Value)
+        _G.bounceSpeed = Value / 100
+    end
+})--]]
+
 
 VehicleModsTab:AddSection({
     Name = "Car Control"
 })
 
-accelerationMultiplier = 1
-accelerationEnabled = false
-maxSpeedUncapped = false
-currentMaxSpeed = 250
-stabilizationEnabled = false
-stabilizationStrength = 1
+local accelerationMultiplier = 1
+local accelerationEnabled = false
+local maxSpeedUncapped = false
+local currentMaxSpeed = 250
+local stabilizationEnabled = false
+local stabilizationStrength = 1
 
 VehicleModsTab:AddSlider({
     Name = "Max Speed Limit",
@@ -2360,8 +2524,8 @@ VehicleModsTab:AddSlider({
     end
 })
 
-function removeAllSpeedLimits()
-    car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
+local function removeAllSpeedLimits()
+    local car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
     if not car then return end
     
     pcall(function()
@@ -2383,30 +2547,30 @@ end
 RunService.Heartbeat:Connect(function()
     if not accelerationEnabled then return end
     
-    car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
+    local car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
     if not car then return end
     
-    driveSeat = car:FindFirstChild("DriveSeat")
+    local driveSeat = car:FindFirstChild("DriveSeat")
     if not driveSeat then return end
     
-    humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
     if humanoid and humanoid.SeatPart == driveSeat then
-        isAccelerating = UIS:IsKeyDown(Enum.KeyCode.W) or 
-                          UIS:IsKeyDown(Enum.KeyCode.Up)
+        local isAccelerating = UserInputService:IsKeyDown(Enum.KeyCode.W) or 
+                              UserInputService:IsKeyDown(Enum.KeyCode.Up)
         
-        currentVelocity = driveSeat.AssemblyLinearVelocity
-        carForward = driveSeat.CFrame.LookVector
-        horizontalForward = Vector3.new(carForward.X, 0, carForward.Z).Unit
-        horizontalVelocity = Vector3.new(currentVelocity.X, 0, currentVelocity.Z)
-        currentSpeed = horizontalVelocity.Magnitude
+        local currentVelocity = driveSeat.AssemblyLinearVelocity
+        local carForward = driveSeat.CFrame.LookVector
+        local horizontalForward = Vector3.new(carForward.X, 0, carForward.Z).Unit
+        local horizontalVelocity = Vector3.new(currentVelocity.X, 0, currentVelocity.Z)
+        local currentSpeed = horizontalVelocity.Magnitude
         
         if isAccelerating and accelerationMultiplier > 1 then
-            baseBoost = 5
-            velocityBoost = baseBoost * accelerationMultiplier
+            local baseBoost = 5
+            local velocityBoost = baseBoost * accelerationMultiplier
             
-            newVelocity = currentVelocity + (horizontalForward * velocityBoost)
+            local newVelocity = currentVelocity + (horizontalForward * velocityBoost)
             
-            newHorizontalVelocity = Vector3.new(newVelocity.X, 0, newVelocity.Z)
+            local newHorizontalVelocity = Vector3.new(newVelocity.X, 0, newVelocity.Z)
             if newHorizontalVelocity.Magnitude > currentMaxSpeed then
                 newHorizontalVelocity = newHorizontalVelocity.Unit * currentMaxSpeed
                 newVelocity = Vector3.new(newHorizontalVelocity.X, newVelocity.Y, newHorizontalVelocity.Z)
@@ -2417,13 +2581,13 @@ RunService.Heartbeat:Connect(function()
         
         if stabilizationEnabled and isAccelerating and currentSpeed > 20 then
             if currentSpeed < currentMaxSpeed - 10 then
-                speedDeficit = currentMaxSpeed - currentSpeed
-                forceMultiplier = math.clamp(speedDeficit / 100, 0.3, 1.5)
-                stabilizationForce = horizontalForward * (stabilizationStrength * 8 * forceMultiplier)
+                local speedDeficit = currentMaxSpeed - currentSpeed
+                local forceMultiplier = math.clamp(speedDeficit / 100, 0.3, 1.5)
+                local stabilizationForce = horizontalForward * (stabilizationStrength * 8 * forceMultiplier)
                 
-                newVelocity = currentVelocity + stabilizationForce
+                local newVelocity = currentVelocity + stabilizationForce
                 
-                newHorizontalVelocity = Vector3.new(newVelocity.X, 0, newVelocity.Z)
+                local newHorizontalVelocity = Vector3.new(newVelocity.X, 0, newVelocity.Z)
                 if newHorizontalVelocity.Magnitude > currentMaxSpeed then
                     newHorizontalVelocity = newHorizontalVelocity.Unit * currentMaxSpeed
                     newVelocity = Vector3.new(newHorizontalVelocity.X, newVelocity.Y, newHorizontalVelocity.Z)
@@ -2434,7 +2598,7 @@ RunService.Heartbeat:Connect(function()
         end
         
         if accelerationEnabled or stabilizationEnabled then
-            finalHorizontalVelocity = Vector3.new(currentVelocity.X, 0, currentVelocity.Z)
+            local finalHorizontalVelocity = Vector3.new(currentVelocity.X, 0, currentVelocity.Z)
             if finalHorizontalVelocity.Magnitude > currentMaxSpeed then
                 finalHorizontalVelocity = finalHorizontalVelocity.Unit * currentMaxSpeed
                 driveSeat.AssemblyLinearVelocity = Vector3.new(finalHorizontalVelocity.X, currentVelocity.Y, finalHorizontalVelocity.Z)
@@ -2464,10 +2628,10 @@ VehicleModsTab:AddSection({
     Name = "Brake & Reverse"
 })
 
-BrakeForceEnabled = false
-BrakePower = 500
-ReverseSpeedEnabled = false
-ReversePower = 500
+local BrakeForceEnabled = false
+local BrakePower = 500
+local ReverseSpeedEnabled = false
+local ReversePower = 500
 
 VehicleModsTab:AddToggle({
     Name = "Enable Brake Force",
@@ -2515,37 +2679,37 @@ VehicleModsTab:AddSlider({
     end
 })
 
-lastVelocity = Vector3.new(0, 0, 0)
-smoothingFactor = 0.3
+local lastVelocity = Vector3.new(0, 0, 0)
+local smoothingFactor = 0.3
 
 RunService.Heartbeat:Connect(function()
-    car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
+    local car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
     if not car then return end
     
-    driveSeat = car:FindFirstChild("DriveSeat")
+    local driveSeat = car:FindFirstChild("DriveSeat")
     if not driveSeat then return end
     
-    humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
     if not humanoid or humanoid.SeatPart ~= driveSeat then return end
     
-    currentVelocity = driveSeat.AssemblyLinearVelocity
-    carForward = driveSeat.CFrame.LookVector
-    smoothVelocity = lastVelocity:Lerp(currentVelocity, smoothingFactor)
+    local currentVelocity = driveSeat.AssemblyLinearVelocity
+    local carForward = driveSeat.CFrame.LookVector
+    local smoothVelocity = lastVelocity:Lerp(currentVelocity, smoothingFactor)
     
-    if BrakeForceEnabled and UIS:IsKeyDown(Enum.KeyCode.S) then
-        brakeDirection = -carForward
-        currentSpeed = Vector3.new(smoothVelocity.X, 0, smoothVelocity.Z).Magnitude
+    if BrakeForceEnabled and UserInputService:IsKeyDown(Enum.KeyCode.S) then
+        local brakeDirection = -carForward
+        local currentSpeed = Vector3.new(smoothVelocity.X, 0, smoothVelocity.Z).Magnitude
         
         if currentSpeed > 5 then
-            brakeForce = math.min(currentSpeed * 1.5, BrakePower)
-            brakeDelta = brakeDirection * brakeForce * 0.05
+            local brakeForce = math.min(currentSpeed * 1.5, BrakePower)
+            local brakeDelta = brakeDirection * brakeForce * 0.05
             driveSeat.AssemblyLinearVelocity = smoothVelocity + brakeDelta
         end
     end
     
-    if ReverseSpeedEnabled and UIS:IsKeyDown(Enum.KeyCode.S) then
-        reverseDirection = -carForward
-        reverseForce = ReversePower * 0.03
+    if ReverseSpeedEnabled and UserInputService:IsKeyDown(Enum.KeyCode.S) then
+        local reverseDirection = -carForward
+        local reverseForce = ReversePower * 0.03
         
         if Vector3.new(smoothVelocity.X, 0, smoothVelocity.Z).Magnitude < 500 then
             driveSeat.AssemblyLinearVelocity = smoothVelocity + (reverseDirection * reverseForce)
@@ -2558,10 +2722,10 @@ end)
 VehicleModsTab:AddButton({
     Name = "Emergency Brake",
     Callback = function()
-        car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
+        local car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
         if not car then return end
         
-        driveSeat = car:FindFirstChild("DriveSeat")
+        local driveSeat = car:FindFirstChild("DriveSeat")
         if not driveSeat then return end
         
         driveSeat.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
@@ -2580,11 +2744,12 @@ VehicleModsTab:AddButton({
     end
 })
 
+
 VehicleModsTab:AddSection({
     Name = "Car Boost"
 })
 
-CarBoostSettings = {
+local CarBoostSettings = {
     Enabled = false,
     BoostKey = Enum.KeyCode.LeftShift,
     BoostPower = 200,
@@ -2621,15 +2786,16 @@ VehicleModsTab:AddSlider({
     end
 })
 
+-- logic
 RunService.Heartbeat:Connect(function()
-    if CarBoostSettings.Enabled and UIS:IsKeyDown(CarBoostSettings.BoostKey) then
-        car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
+    if CarBoostSettings.Enabled and UserInputService:IsKeyDown(CarBoostSettings.BoostKey) then
+        local car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
         if car then
-            driveSeat = car:FindFirstChild("DriveSeat")
+            local driveSeat = car:FindFirstChild("DriveSeat")
             if driveSeat then
-                humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
                 if humanoid and humanoid.SeatPart == driveSeat then
-                    boostDirection = driveSeat.CFrame.LookVector
+                    local boostDirection = driveSeat.CFrame.LookVector
                     driveSeat.AssemblyLinearVelocity = driveSeat.AssemblyLinearVelocity + (boostDirection * CarBoostSettings.BoostPower * 0.1)
                 end
             end
@@ -2637,20 +2803,24 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
+
 VehicleModsTab:AddSection({
     Name = "Interactables"
 })
 
+
+
 VehicleModsTab:AddButton({
     Name = "Enter Car",
     Callback = function()
-        character = LocalPlayer.Character
+        local character = LocalPlayer.Character
         if not character then return end
         
-        humanoid = character:FindFirstChildOfClass("Humanoid")
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
         if not humanoid then return end
         
-        car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
+       
+        local car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
         if not car then
             OrionLib:MakeNotification({
                 Name = "No Car Found",
@@ -2660,7 +2830,8 @@ VehicleModsTab:AddButton({
             return
         end
         
-        driveSeat = car:FindFirstChild("DriveSeat")
+        
+        local driveSeat = car:FindFirstChild("DriveSeat")
         if not driveSeat then
             OrionLib:MakeNotification({
                 Name = "No Drive Seat",
@@ -2669,6 +2840,7 @@ VehicleModsTab:AddButton({
             })
             return
         end
+        
         
         humanoid.Sit = false
         task.wait(0.1)
@@ -2682,7 +2854,7 @@ VehicleModsTab:AddButton({
     end
 })
 
-function bCtM()
+bCtM = function()
     vehicle = VehiclesFolder:FindFirstChild(LocalPlayer.Name)
     if vehicle and LocalPlayer.Character then
         hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -2702,17 +2874,22 @@ VehicleModsTab:AddButton({
     end
 })
 
+
+
+
+
 VehicleModsTab:AddButton({
     Name = "Smart Enter/Bring",
     Callback = function()
-        character = LocalPlayer.Character
+        local character = LocalPlayer.Character
         if not character then return end
         
-        humanoid = character:FindFirstChildOfClass("Humanoid")
-        humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
         if not humanoid or not humanoidRootPart then return end
         
-        car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
+        
+        local car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
         if not car then
             OrionLib:MakeNotification({
                 Name = "No Car Found",
@@ -2722,17 +2899,19 @@ VehicleModsTab:AddButton({
             return
         end
         
-        driveSeat = car:FindFirstChild("DriveSeat")
+        local driveSeat = car:FindFirstChild("DriveSeat")
         if not driveSeat then return end
         
-        carPosition = driveSeat.Position
-        playerPosition = humanoidRootPart.Position
-        distance = (carPosition - playerPosition).Magnitude
+        -- osi
+        local carPosition = driveSeat.Position
+        local playerPosition = humanoidRootPart.Position
+        local distance = (carPosition - playerPosition).Magnitude
         
         if distance > 50 then 
-            bringOffset = 8 
-            camera = workspace.CurrentCamera
-            bringPosition = playerPosition + (camera.CFrame.LookVector * bringOffset)
+            -- Bring car 
+            local bringOffset = 8 
+            local camera = workspace.CurrentCamera
+            local bringPosition = playerPosition + (camera.CFrame.LookVector * bringOffset)
             
             car:SetPrimaryPartCFrame(CFrame.new(bringPosition) * CFrame.Angles(0, humanoidRootPart.Orientation.Y, 0))
             driveSeat.AssemblyLinearVelocity = Vector3.zero
@@ -2741,6 +2920,7 @@ VehicleModsTab:AddButton({
             task.wait(0.5) 
         end
         
+        -- Enter tar
         humanoid.Sit = false
         task.wait(0.1)
         driveSeat:Sit(humanoid)
@@ -2756,38 +2936,43 @@ VehicleModsTab:AddButton({
 VehicleModsTab:AddButton({
     Name = "Force Exit Vehicle",
     Callback = function()
-        character = LocalPlayer.Character
-        if not character then return end
+    character = LocalPlayer.Character
+    if not character then return end
 
-        humanoid = character:FindFirstChildOfClass("Humanoid")
-        if not humanoid then return end
+    humanoid = character:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return end
 
-        if humanoid.Sit then
-            humanoid.Sit = false
-            humanoid.PlatformStand = false
+    
+    if humanoid.Sit then
+    -- force
+        humanoid.Sit = false
+        humanoid.PlatformStand = false
 
-            OrionLib:MakeNotification({
-                Name = "Exited Car",
-                Content = "Successfully exited Vehicle",
-                Time = 2
-            })
-        else
-            OrionLib:MakeNotification({
-                Name = "Not in a Vehicle",
-                Content = "You're not currently sitting in a Vehicle",
-                Time = 2
-            })
-        end
+
+        OrionLib:MakeNotification({
+            Name = "Exited Car",
+            Content = "Successfully exited Vehicle",
+            Time = 2
+        })
+    else
+        OrionLib:MakeNotificaiton({
+            Name = "Not in a Vehicle",
+            Content = "You're not currently sitting in a Vehicle",
+            Time = 2
+        })
     end
+end
 })
+
 
 VehicleModsTab:AddSection({
     Name = "Overrides"
 })
 
-infiniteFuelEnabled = false
-fuelAttributeName = "currentFuel"
-maxFuelValue = 9999999999999999999999
+local infiniteFuelEnabled = false
+local fuelAttributeName = "currentFuel"
+local maxFuelValue = 9999999999999999999999
+
 
 VehicleModsTab:AddToggle({
     Name = "Infinite Fuel",
@@ -2799,7 +2984,7 @@ VehicleModsTab:AddToggle({
         if val then 
             task.spawn(function() 
                 while infiniteFuelEnabled do 
-                    car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name) 
+                    local car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name) 
                     if car then 
                         car:SetAttribute(fuelAttributeName, maxFuelValue) 
                     end
@@ -2810,7 +2995,8 @@ VehicleModsTab:AddToggle({
     end
 })
 
-autoRepairEnabled = false
+
+local autoRepairEnabled = false
 
 VehicleModsTab:AddToggle({
     Name = "Car GodMode",
@@ -2822,7 +3008,7 @@ VehicleModsTab:AddToggle({
         if val then
             task.spawn(function()
                 while autoRepairEnabled do
-                    car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
+                    local car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
                     if car then
                         car:SetAttribute("currentHealth", 1000)
                         car:SetAttribute("IsOn", true)
@@ -2834,11 +3020,13 @@ VehicleModsTab:AddToggle({
     end
 })
 
+
+-- ad
 VehicleModsTab2:AddSection({
     Name = "Auto Driver"
 })
 
-SimpleAutoDriver = {
+local SimpleAutoDriver = {
     enabled = false,
     cruiseSpeed = 40,
     currentWaypoint = nil,
@@ -2847,7 +3035,8 @@ SimpleAutoDriver = {
     lastObstacleCheck = 0
 }
 
-RouteLibrary = {
+
+local RouteLibrary = {
     ["City Loop"] = {
         Vector3.new(-219.6, 5.6, 3506.3),
         Vector3.new(-281.7, 5.6, 3507.1),
@@ -2927,6 +3116,7 @@ RouteLibrary = {
         Vector3.new(-154.7, -91.7, 3235.3),
         Vector3.new(-370.6, -82.3, 3251.4)
     }, 
+
     
     ["Business District"] = {
         Vector3.new(-1874.1, 5.6, 2540.0),
@@ -3007,10 +3197,26 @@ RouteLibrary = {
         Vector3.new(-1100.9, 5.6, 2215.2),
         Vector3.new(-1103.4, 5.6, 2435.0),
         Vector3.new(-1106.5, 5.6, 2603.2),
+       
+    },
+    
+    ["Extended Tour"] = {
+        Vector3.new(0, 10, 0),
+        Vector3.new(100, 10, 0),
+        Vector3.new(100, 10, 100),
+        Vector3.new(0, 10, 100),
+        Vector3.new(-100, 10, 100),
+        Vector3.new(-100, 10, 0),
+        Vector3.new(-100, 10, -100),
+        Vector3.new(0, 10, -100),
+        Vector3.new(100, 10, -100),
+        Vector3.new(100, 10, 0),
+        Vector3.new(0, 10, 0)
     }
 }
 
-selectedRoute = "City Loop"
+local selectedRoute = "City Loop"
+
 
 VehicleModsTab2:AddDropdown({
     Name = "Select Route",
@@ -3022,7 +3228,7 @@ VehicleModsTab2:AddDropdown({
     },
     Callback = function(val)
         
-        routeMap = {
+        local routeMap = {
             ["City Loop - Start at Jeweler Parking"] = "City Loop",
             ["Highway Run - Start at Bank Tunnel at the Speed & City Sign"] = "Highway Run",
             ["Business District - Start at Police Bridge"] = "Business District",
@@ -3037,7 +3243,8 @@ VehicleModsTab2:AddDropdown({
     end
 })
 
-function generateWaypoints()
+
+local function generateWaypoints()
     if RouteLibrary[selectedRoute] then
         SimpleAutoDriver.waypoints = RouteLibrary[selectedRoute]
         SimpleAutoDriver.currentWaypoint = 1
@@ -3054,16 +3261,18 @@ function generateWaypoints()
     end
 end
 
-function getNearestWaypoint()
-    car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
+
+local function getNearestWaypoint()
+    local car = workspace.Vehicles:FindInstance(LocalPlayer.Name)
     if not car or #SimpleAutoDriver.waypoints == 0 then return 1 end
     
-    carPosition = car:GetPivot().Position
-    nearestIndex = 1
-    nearestDistance = math.huge
+    local carPosition = car:GetPivot().Position
+    local nearestIndex = 1
+    local nearestDistance = math.huge
+    
     
     for i, waypoint in ipairs(SimpleAutoDriver.waypoints) do
-        distance = (waypoint - carPosition).Magnitude
+        local distance = (waypoint - carPosition).Magnitude
         if distance < nearestDistance then
             nearestDistance = distance
             nearestIndex = i
@@ -3073,19 +3282,22 @@ function getNearestWaypoint()
     return nearestIndex
 end
 
-function getNextWaypoint()
+
+local function getNextWaypoint()
     if #SimpleAutoDriver.waypoints == 0 then
         generateWaypoints()
     end
+    
     
     if not SimpleAutoDriver.currentWaypoint then
         SimpleAutoDriver.currentWaypoint = getNearestWaypoint()
     else
         
-        car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
+        local car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
         if car then
-            carPosition = car:GetPivot().Position
-            currentWaypoint = SimpleAutoDriver.waypoints[SimpleAutoDriver.currentWaypoint]
+            local carPosition = car:GetPivot().Position
+            local currentWaypoint = SimpleAutoDriver.waypoints[SimpleAutoDriver.currentWaypoint]
+            
             
             if (currentWaypoint - carPosition).Magnitude < 25 then
                 SimpleAutoDriver.currentWaypoint = (SimpleAutoDriver.currentWaypoint % #SimpleAutoDriver.waypoints) + 1
@@ -3096,10 +3308,11 @@ function getNextWaypoint()
     return SimpleAutoDriver.waypoints[SimpleAutoDriver.currentWaypoint]
 end
 
+ 
 VehicleModsTab2:AddButton({
     Name = "Start from Nearest Point",
     Callback = function()
-        SimpleAutoDriver.currentWaypoint = nil
+        SimpleAutoDriver.currentWaypoint = nil -- force rec
         if not SimpleAutoDriver.enabled then
             SimpleAutoDriver.enabled = true
         end
@@ -3111,12 +3324,31 @@ VehicleModsTab2:AddButton({
     end
 })
 
+-- pos copy
+--[[VehicleModsTab2:AddButton({
+    Name = "Copy Current Position",
+    Callback = function()
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            local pos = char.HumanoidRootPart.Position
+            setclipboard(string.format("Vector3.new(%.1f, %.1f, %.1f)", pos.X, pos.Y, pos.Z))
+            OrionLib:MakeNotification({
+                Name = "Position Copied",
+                Content = "Position copied to clipboard: " .. string.format("Vector3.new(%.1f, %.1f, %.1f)", pos.X, pos.Y, pos.Z),
+                Time = 5
+            })
+        end
+    end
+}) --]]
+
+
 VehicleModsTab2:AddToggle({
     Name = "Enable Auto Driver",
     Default = false,
     Callback = function(val)
         SimpleAutoDriver.enabled = val
         if val then
+            
             generateWaypoints()
             SimpleAutoDriver.state = "DRIVING"
             OrionLib:MakeNotification({
@@ -3150,64 +3382,89 @@ VehicleModsTab2:AddSlider({
     end
 })
 
+
+
+-- find
+local function getNextWaypoint()
+    if #SimpleAutoDriver.waypoints == 0 then
+        generateWaypoints()
+    end
+    
+    SimpleAutoDriver.currentWaypoint = (SimpleAutoDriver.currentWaypoint % #SimpleAutoDriver.waypoints) + 1
+    return SimpleAutoDriver.waypoints[SimpleAutoDriver.currentWaypoint]
+end
+
+-- logic
 RunService.Heartbeat:Connect(function()
     if SimpleAutoDriver.enabled then
-        car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
+        local car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
         if car then
-            driveSeat = car:FindFirstChild("DriveSeat")
+            local driveSeat = car:FindFirstChild("DriveSeat")
             if driveSeat then
-                carPosition = driveSeat.Position
-                currentVelocity = driveSeat.AssemblyLinearVelocity
-                currentSpeed = Vector3.new(currentVelocity.X, 0, currentVelocity.Z).Magnitude
+                local carPosition = driveSeat.Position
+                local currentVelocity = driveSeat.AssemblyLinearVelocity
+                local currentSpeed = Vector3.new(currentVelocity.X, 0, currentVelocity.Z).Magnitude
                 
-                targetWaypoint = SimpleAutoDriver.waypoints[SimpleAutoDriver.currentWaypoint]
+                
+                local targetWaypoint = SimpleAutoDriver.waypoints[SimpleAutoDriver.currentWaypoint]
                 if not targetWaypoint or (targetWaypoint - carPosition).Magnitude < 15 then
                     targetWaypoint = getNextWaypoint()
                 end
                 
-                toWaypoint = (targetWaypoint - carPosition)
-                toWaypoint = Vector3.new(toWaypoint.X, 0, toWaypoint.Z)
-                targetDirection = toWaypoint.Unit
                 
-                hasObstacle, obstacleType = false, nil
+                local toWaypoint = (targetWaypoint - carPosition)
+                toWaypoint = Vector3.new(toWaypoint.X, 0, toWaypoint.Z)
+                local targetDirection = toWaypoint.Unit
+                
+                
+                local hasObstacle, obstacleType = false, nil
                 if SimpleAutoDriver.avoidObstacles and tick() - SimpleAutoDriver.lastObstacleCheck > 0.2 then
-                    hasObstacle, obstacleType = false, nil
+                    hasObstacle, obstacleType = checkForwardObstacle(carPosition, targetDirection, 25)
                     SimpleAutoDriver.lastObstacleCheck = tick()
                 end
+                
                
-                atIntersection = false
+                local atIntersection = false
                 if SimpleAutoDriver.stopAtIntersections then
-                    atIntersection = false
+                    atIntersection = isAtIntersection(carPosition)
                 end
+                
                 
                 if hasObstacle then
                     SimpleAutoDriver.state = "AVOIDING"
                     
-                    avoidDirection = (targetDirection + car.CFrame.RightVector * 0.5).Unit
-                    avoidSpeed = math.min(SimpleAutoDriver.cruiseSpeed * 0.3, 15)
+                    
+                    local avoidDirection = (targetDirection + car.CFrame.RightVector * 0.5).Unit
+                    local avoidSpeed = math.min(SimpleAutoDriver.cruiseSpeed * 0.3, 15)
                     
                     driveSeat.AssemblyLinearVelocity = avoidDirection * avoidSpeed
+                    
                     
                     task.wait(1)
                     SimpleAutoDriver.state = "DRIVING"
                     
                 elseif atIntersection and currentSpeed > 20 then
-                    brakeForce = math.min(currentSpeed * 0.8, 30)
+                    
+                    local brakeForce = math.min(currentSpeed * 0.8, 30)
                     driveSeat.AssemblyLinearVelocity = currentVelocity * 0.7
                     task.wait(0.5)
                     
                 else
                     SimpleAutoDriver.state = "DRIVING"
                     
-                    speedDifference = SimpleAutoDriver.cruiseSpeed - currentSpeed
-                    acceleration = math.min(math.max(speedDifference * 0.3, -20), 15)
                     
-                    currentForward = driveSeat.CFrame.LookVector
-                    steerStrength = 0.1
-                    smoothedDirection = currentForward:Lerp(targetDirection, steerStrength)
+                    local speedDifference = SimpleAutoDriver.cruiseSpeed - currentSpeed
+                    local acceleration = math.min(math.max(speedDifference * 0.3, -20), 15)
                     
-                   newVelocity = currentVelocity + (smoothedDirection * acceleration)
                     
+                    local currentForward = driveSeat.CFrame.LookVector
+                    local steerStrength = 0.1
+                    local smoothedDirection = currentForward:Lerp(targetDirection, steerStrength)
+                    
+                   
+                    local newVelocity = currentVelocity + (smoothedDirection * acceleration)
+                    
+                   
                     if newVelocity.Magnitude > SimpleAutoDriver.cruiseSpeed then
                         newVelocity = newVelocity.Unit * SimpleAutoDriver.cruiseSpeed
                     end
@@ -3218,8 +3475,9 @@ RunService.Heartbeat:Connect(function()
                         newVelocity.Z
                     )
                     
+                    
                     if smoothedDirection.Magnitude > 0.1 then
-                        newCFrame = CFrame.new(carPosition, carPosition + smoothedDirection)
+                        local newCFrame = CFrame.new(carPosition, carPosition + smoothedDirection)
                         driveSeat.CFrame = newCFrame
                     end
                 end
@@ -3231,13 +3489,14 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
+
 VehicleModsTab2:AddButton({
     Name = "Emergency Stop",
     Callback = function()
         SimpleAutoDriver.enabled = false
-        car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
+        local car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
         if car then
-            driveSeat = car:FindFirstChild("DriveSeat")
+            local driveSeat = car:FindFirstChild("DriveSeat")
             if driveSeat then
                 driveSeat.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
             end
@@ -3250,15 +3509,18 @@ VehicleModsTab2:AddButton({
     end
 })
 
-waypointMarkers = {}
-function visualizeWaypoints()
+
+local waypointMarkers = {}
+local function visualizeWaypoints()
+    -- clear old
     for _, marker in pairs(waypointMarkers) do
         marker:Destroy()
     end
     waypointMarkers = {}
     
+    -- mark
     for i, waypoint in pairs(SimpleAutoDriver.waypoints) do
-        part = Instance.new("Part")
+        local part = Instance.new("Part")
         part.Name = "WaypointMarker"
         part.Size = Vector3.new(2, 2, 2)
         part.Position = waypoint + Vector3.new(0, 5, 0)
@@ -3271,11 +3533,13 @@ function visualizeWaypoints()
     end
 end
 
+-- vis upd
 task.spawn(function()
     while task.wait(1) do
         if SimpleAutoDriver.enabled then
             visualizeWaypoints()
         else
+            -- clear
             for _, marker in pairs(waypointMarkers) do
                 marker:Destroy()
             end
@@ -3284,11 +3548,13 @@ task.spawn(function()
     end
 end)
 
+
+
 VehicleModsTab:AddSection({
     Name = "Vehicle Tuning"
 })
 
-function findCarByName(playerName)
+local function findCarByName(playerName)
     for _, vehicle in pairs(workspace.Vehicles:GetChildren()) do
         if vehicle.Name:find(playerName) then
             return vehicle
@@ -3297,8 +3563,15 @@ function findCarByName(playerName)
     return nil
 end
 
-function setCarAttribute(attribute, value)
-    car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name) or findCarByName(LocalPlayer.Name)
+local function setCarAttribute(attribute, value)
+    local car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name) or findCarByName(LocalPlayer.Name)
+    if car then
+        car:SetAttribute(attribute, value)
+    end
+end
+
+local function setCarAttribute(attribute, value)
+    local car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name) or findCarByName(LocalPlayer.Name)
     if car then
         car:SetAttribute(attribute, value)
     end
@@ -3308,7 +3581,7 @@ VehicleModsTab:AddSlider({
     Name = "Armor",
     Min = 0,
     Max = 6,
-    Default = GetSetting("ArmorLevel", 0),
+    Default = GetSetting("ArmorLevel", false),
     Color = Color3.fromRGB(255, 255, 255),
     Increment = 1,
     Callback = function(val)
@@ -3321,7 +3594,7 @@ VehicleModsTab:AddSlider({
     Name = "Brakes",
     Min = 0,
     Max = 6,
-    Default = GetSetting("BrakesLevel", 0),
+    Default = GetSetting("BrakesLevel", false),
     Color = Color3.fromRGB(255, 255, 255),
     Increment = 1,
     Callback = function(val)
@@ -3334,7 +3607,7 @@ VehicleModsTab:AddSlider({
     Name = "Engine",
     Min = 0,
     Max = 6,
-    Default = GetSetting("EngineLevel", 0),
+    Default = GetSetting("EngineLevel", false),
     Color = Color3.fromRGB(255, 255, 255),
     Increment = 1,
     Callback = function(val)
@@ -3343,14 +3616,16 @@ VehicleModsTab:AddSlider({
     end
 })
 
+
+
 VehicleModsTab2:AddSection({
     Name = "Drone View"
 })
 
-droneModeEnabled = false
-droneHeight = 30
-originalCFrame = nil
-smoothFactor = 0.1
+local droneModeEnabled = false
+local droneHeight = 30
+local originalCFrame = nil
+local smoothFactor = 0.1
 
 VehicleModsTab2:AddToggle({
     Name = "Drone Camera",
@@ -3365,20 +3640,23 @@ VehicleModsTab2:AddToggle({
                 Time = 3
             })
             
+            -- old cframe
             originalCFrame = workspace.CurrentCamera.CFrame
             
             task.spawn(function()
-                Camera = workspace.CurrentCamera
-                lastPosition = nil
+                local Camera = workspace.CurrentCamera
+                local lastPosition = nil
                 
                 while droneModeEnabled do
-                    car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
-                    targetPosition
+                    local car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
+                    local targetPosition
                     
                     if car then
+                        
                         targetPosition = car:GetPivot().Position + Vector3.new(0, droneHeight, 0)
                     else
-                        character = LocalPlayer.Character
+                        
+                        local character = LocalPlayer.Character
                         if character and character:FindFirstChild("HumanoidRootPart") then
                             targetPosition = character.HumanoidRootPart.Position + Vector3.new(0, droneHeight, 0)
                         else
@@ -3386,28 +3664,31 @@ VehicleModsTab2:AddToggle({
                         end
                     end
                     
+                    -- smooth
                     if lastPosition then
                         targetPosition = lastPosition:Lerp(targetPosition, smoothFactor)
                     end
                     
-                    moveVector = Vector3.new(0, 0, 0)
-                    if UIS:IsKeyDown(Enum.KeyCode.W) then
+                    -- wasd
+                    local moveVector = Vector3.new(0, 0, 0)
+                    if UserInputService:IsKeyDown(Enum.KeyCode.W) then
                         moveVector = moveVector + Camera.CFrame.LookVector
                     end
-                    if UIS:IsKeyDown(Enum.KeyCode.S) then
+                    if UserInputService:IsKeyDown(Enum.KeyCode.S) then
                         moveVector = moveVector - Camera.CFrame.LookVector
                     end
-                    if UIS:IsKeyDown(Enum.KeyCode.A) then
+                    if UserInputService:IsKeyDown(Enum.KeyCode.A) then
                         moveVector = moveVector - Camera.CFrame.RightVector
                     end
-                    if UIS:IsKeyDown(Enum.KeyCode.D) then
+                    if UserInputService:IsKeyDown(Enum.KeyCode.D) then
                         moveVector = moveVector + Camera.CFrame.RightVector
                     end
                     
                     moveVector = moveVector * 0.5
                     targetPosition = targetPosition + moveVector
                     
-                    lookPosition
+                    -- ghi
+                    local lookPosition
                     if car then
                         lookPosition = car:GetPivot().Position
                     else
@@ -3420,6 +3701,7 @@ VehicleModsTab2:AddToggle({
                     RunService.RenderStepped:Wait()
                 end
                 
+                -- backtor
                 if originalCFrame then
                     Camera.CFrame = originalCFrame
                 end
@@ -3446,10 +3728,10 @@ VehicleModsTab2:AddSection({
     Name = "Dashcam View"
 })
 
-dashcamEnabled = false
-dashcamOriginalCFrame = nil
-dashcamPosition = Vector3.new(0, 2, 1)
-dashcamLookOffset = Vector3.new(0, 0, 20)
+local dashcamEnabled = false
+local dashcamOriginalCFrame = nil
+local dashcamPosition = Vector3.new(0, 2, 1)
+local dashcamLookOffset = Vector3.new(0, 0, 20)
 
 VehicleModsTab2:AddToggle({
     Name = "Dashcam View",
@@ -3467,29 +3749,29 @@ VehicleModsTab2:AddToggle({
             dashcamOriginalCFrame = workspace.CurrentCamera.CFrame
             
             task.spawn(function()
-                Camera = workspace.CurrentCamera
+                local Camera = workspace.CurrentCamera
                 
                 while dashcamEnabled do
-                    car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
+                    local car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
                     
                     if car then
-                        driveSeat = car:FindFirstChild("DriveSeat")
+                        local driveSeat = car:FindFirstChild("DriveSeat")
                         
                         if driveSeat then
-                            carCFrame = car:GetPivot()
+                            local carCFrame = car:GetPivot()
                             
-                            hoodPosition = carCFrame.Position + 
+                            local hoodPosition = carCFrame.Position + 
                                                   (carCFrame.RightVector * dashcamPosition.X) + 
                                                   (carCFrame.UpVector * dashcamPosition.Y) + 
                                                   (carCFrame.LookVector * dashcamPosition.Z)
                             
-                            lookPosition = hoodPosition + (carCFrame.LookVector * dashcamLookOffset.Z)
+                            local lookPosition = hoodPosition + (carCFrame.LookVector * dashcamLookOffset.Z)
                             
                             Camera.CFrame = CFrame.new(hoodPosition, lookPosition)
                             
                             if driveSeat.AssemblyLinearVelocity.Magnitude > 10 then
-                                shakeAmount = 0.02 * (driveSeat.AssemblyLinearVelocity.Magnitude / 100)
-                                shake = Vector3.new(
+                                local shakeAmount = 0.02 * (driveSeat.AssemblyLinearVelocity.Magnitude / 100)
+                                local shake = Vector3.new(
                                     math.random(-shakeAmount, shakeAmount),
                                     math.random(-shakeAmount * 0.5, shakeAmount * 0.5),
                                     math.random(-shakeAmount, shakeAmount)
@@ -3497,13 +3779,13 @@ VehicleModsTab2:AddToggle({
                                 Camera.CFrame = Camera.CFrame + shake
                             end
                         else
-                            carPosition = car:GetPivot().Position
+                            local carPosition = car:GetPivot().Position
                             Camera.CFrame = CFrame.new(carPosition + Vector3.new(0, 5, 2), carPosition + Vector3.new(0, 0, 10))
                         end
                     else
-                        character = LocalPlayer.Character
+                        local character = LocalPlayer.Character
                         if character then
-                            hrp = character:FindFirstChild("HumanoidRootPart")
+                            local hrp = character:FindFirstChild("HumanoidRootPart")
                             if hrp then
                                 Camera.CFrame = CFrame.new(
                                     hrp.Position + Vector3.new(0, 1, 1),
@@ -3563,6 +3845,7 @@ VehicleModsTab2:AddSlider({
     end
 })
 
+
 VehicleModsTab2:AddButton({
     Name = "Reset Dashcam View",
     Callback = function()
@@ -3583,7 +3866,7 @@ VehicleModsTab2:AddSection({
 VehicleModsTab2:AddButton({
     Name = "Duplicate Current Car",
     Callback = function()
-        originalCar = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
+        local originalCar = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
         if not originalCar then
             OrionLib:MakeNotification({
                 Name = "Error",
@@ -3593,11 +3876,13 @@ VehicleModsTab2:AddButton({
             return
         end
         
-        clone = originalCar:Clone()
+        -- clone
+        local clone = originalCar:Clone()
         clone.Name = LocalPlayer.Name .. "_Clone_" .. math.random(1000, 9999)
         
-        offset = 10
-        newPosition = originalCar:GetPivot().Position + Vector3.new(offset, 0, 0)
+        
+        local offset = 10
+        local newPosition = originalCar:GetPivot().Position + Vector3.new(offset, 0, 0)
         clone:PivotTo(CFrame.new(newPosition))
         
         clone.Parent = workspace.Vehicles
@@ -3613,16 +3898,17 @@ VehicleModsTab2:AddButton({
 VehicleModsTab2:AddButton({
     Name = "Duplicate Nearby Car",
     Callback = function()
-        playerCar = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
+        local playerCar = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
         if not playerCar then return end
         
-        playerPos = playerCar:GetPivot().Position
-        closestCar = nil
-        closestDistance = math.huge
+        local playerPos = playerCar:GetPivot().Position
+        local closestCar = nil
+        local closestDistance = math.huge
         
+        -- nearest car
         for _, vehicle in pairs(workspace.Vehicles:GetChildren()) do
             if vehicle:IsA("Model") and vehicle ~= playerCar then
-                distance = (vehicle:GetPivot().Position - playerPos).Magnitude
+                local distance = (vehicle:GetPivot().Position - playerPos).Magnitude
                 if distance < closestDistance and distance < 50 then
                     closestDistance = distance
                     closestCar = vehicle
@@ -3631,7 +3917,7 @@ VehicleModsTab2:AddButton({
         end
         
         if closestCar then
-            clone = closestCar:Clone()
+            local clone = closestCar:Clone()
             clone.Name = "Stolen_" .. closestCar.Name
             clone:PivotTo(playerCar:GetPivot() * CFrame.new(15, 0, 0))
             clone.Parent = workspace.Vehicles
@@ -3651,11 +3937,14 @@ VehicleModsTab2:AddButton({
     end
 })
 
+
+
 VehicleModsTab2:AddSection({
     Name = "Vehicle Customization"
 })
 
-selectedColor = Color3.fromRGB(255, 255, 255)
+
+local selectedColor = Color3.fromRGB(255, 255, 255)
 
 VehicleModsTab2:AddColorpicker({
     Name = "Car Color Picker",
@@ -3665,17 +3954,18 @@ VehicleModsTab2:AddColorpicker({
     end
 })
 
-function getWheelColor()
-    vehiclesFolder = workspace:FindFirstChild("Vehicles")
+
+local function getWheelColor()
+    local vehiclesFolder = workspace:FindFirstChild("Vehicles")
     if not vehiclesFolder then return Color3.fromRGB(255, 255, 255) end
-    car = vehiclesFolder:FindFirstChild(LocalPlayer.Name)
+    local car = vehiclesFolder:FindFirstChild(LocalPlayer.Name)
     if not car then return Color3.fromRGB(255, 255, 255) end
 
     for _, part in pairs(car:GetDescendants()) do
         if part.Name == "FL" or part.Name == "FR" or part.Name == "RL" or part.Name == "RR" then
-            rim = part:FindFirstChild("Rim")
+            local rim = part:FindFirstChild("Rim")
             if rim then
-                main = rim:FindFirstChild("Main")
+                local main = rim:FindFirstChild("Main")
                 if main and main:IsA("BasePart") then
                     return main.Color
                 end
@@ -3685,20 +3975,34 @@ function getWheelColor()
     return Color3.fromRGB(255, 255, 255)
 end
 
+local function getBodyColor()
+    local vehiclesFolder = workspace:FindFirstChild("Vehicles")
+    if not vehiclesFolder then return Color3.fromRGB(255, 255, 255) end
+    local car = vehiclesFolder:FindFirstChild(LocalPlayer.Name)
+    if not car then return Color3.fromRGB(255, 255, 255) end
+
+    for _, part in pairs(car:GetDescendants()) do
+        if part.Name == "Body" and part:IsA("BasePart") then
+            return part.Color
+        end
+    end
+    return Color3.fromRGB(255, 255, 255)
+end
+
 VehicleModsTab2:AddColorpicker({
     Name = "Rim Color",
     Default = getWheelColor(),
     Callback = function(color)
-        vehiclesFolder = workspace:FindFirstChild("Vehicles")
+        local vehiclesFolder = workspace:FindFirstChild("Vehicles")
         if not vehiclesFolder then return end
-        car = vehiclesFolder:FindFirstChild(LocalPlayer.Name)
+        local car = vehiclesFolder:FindFirstChild(LocalPlayer.Name)
         if not car then return end
 
         for _, part in pairs(car:GetDescendants()) do
             if part.Name == "FL" or part.Name == "FR" or part.Name == "RL" or part.Name == "RR" then
-                rim = part:FindFirstChild("Rim")
+                local rim = part:FindFirstChild("Rim")
                 if rim then
-                    main = rim:FindFirstChild("Main")
+                    local main = rim:FindFirstChild("Main")
                     if main and main:IsA("BasePart") then
                         main.Color = color
                     end
@@ -3711,13 +4015,13 @@ VehicleModsTab2:AddColorpicker({
 VehicleModsTab2:AddButton({
     Name = "Apply Color to Car",
     Callback = function()
-        car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
+        local car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
         if car then
-            body = car:FindFirstChild("Body")
+            local body = car:FindFirstChild("Body")
             if body then
                 for _, part in pairs(body:GetDescendants()) do
                     if part:IsA("BasePart") then
-                        partName = part.Name
+                        local partName = part.Name
                         if partName ~= "Back Glass" and partName ~= "Glass" and partName ~= "Front Glass" then
                             part.Color = selectedColor
                         end
@@ -3739,7 +4043,9 @@ VehicleModsTab2:AddButton({
     end
 })
 
-selectedMaterial = "SmoothPlastic"
+
+
+local selectedMaterial = "SmoothPlastic"
 
 VehicleModsTab2:AddDropdown({
     Name = "Car Material Picker",
@@ -3770,13 +4076,16 @@ VehicleModsTab2:AddDropdown({
     end
 })
 
+
+
 VehicleModsTab2:AddButton({
     Name = "Apply Material to Car",
     Callback = function()
-        car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
+        local car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
         if car then
-            body = car:FindFirstChild("Body")
+            local body = car:FindFirstChild("Body")
             if body then
+                -- loop
                 for _, part in pairs(body:GetDescendants()) do
                     if part:IsA("BasePart") then
                         pcall(function()
@@ -3804,10 +4113,12 @@ PoliceTab:AddSection({
     Name = "Utiility"
 })
 
-RS = game:GetService("ReplicatedStorage")
-Remote = RS["WvO"]:FindFirstChild("e3a0cb13-da43-46b9-ba5d-e6ea0d913417")
 
-AntiTaserEnabled = false
+local RS = game:GetService("ReplicatedStorage")
+local Remote = RS["WvO"]:FindFirstChild("e3a0cb13-da43-46b9-ba5d-e6ea0d913417")
+
+
+local AntiTaserEnabled = false
 
 PoliceTab:AddToggle({
     Name = "Anti-Taser",
@@ -3818,16 +4129,19 @@ PoliceTab:AddToggle({
         if val then
             task.spawn(function()
                 while AntiTaserEnabled do
-                    character = LocalPlayer.Character
+                    local character = LocalPlayer.Character
                     if character then
+                        
                         if character:GetAttribute("Tased") then
                             character:SetAttribute("Tased", false)
                         end
                         
-                        hrp = character:FindFirstChild("HumanoidRootPart")
+                        
+                        local hrp = character:FindFirstChild("HumanoidRootPart")
                         if hrp and hrp:GetAttribute("Tased") then
                             hrp:SetAttribute("Tased", false)
                         end
+                        
                         
                         for _, part in pairs(character:GetDescendants()) do
                             if part:IsA("BasePart") and part:GetAttribute("Tased") then
@@ -3842,7 +4156,7 @@ PoliceTab:AddToggle({
     end
 })
 
-AutoTaserSettings = {
+local AutoTaserSettings = {
     enabled = false,
     maxRange = 50,
     prediction = 0.15,
@@ -3851,9 +4165,14 @@ AutoTaserSettings = {
     debugMode = false
 }
 
-taserRemote = nil
-function findTaserRemote()
-    folder = ReplicatedStorage:FindFirstChild("WvO")
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+
+local taserRemote = nil
+local function findTaserRemote()
+    local folder = ReplicatedStorage:FindFirstChild("WvO")
     if folder then
         taserRemote = folder:FindFirstChild("99c8a262-b24b-4a80-a962-df12db3054cd")
         if taserRemote and AutoTaserSettings.debugMode then
@@ -3863,30 +4182,33 @@ function findTaserRemote()
     return taserRemote ~= nil
 end
 
+
 findTaserRemote()
 
-function findNearestWantedPlayer()
-    myCharacter = LocalPlayer.Character
+
+local function findNearestWantedPlayer()
+    local myCharacter = LocalPlayer.Character
     if not myCharacter then return nil end
     
-    myRoot = myCharacter:FindFirstChild("HumanoidRootPart")
+    local myRoot = myCharacter:FindFirstChild("HumanoidRootPart")
     if not myRoot then return nil end
     
-    bestTarget = nil
-    shortestDistance = AutoTaserSettings.maxRange
+    local bestTarget = nil
+    local shortestDistance = AutoTaserSettings.maxRange
     
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
-            theirCharacter = player.Character
+            local theirCharacter = player.Character
             if theirCharacter then
-                theirRoot = theirCharacter:FindFirstChild("HumanoidRootPart")
-                theirHumanoid = theirCharacter:FindFirstChild("Humanoid")
+                local theirRoot = theirCharacter:FindFirstChild("HumanoidRootPart")
+                local theirHumanoid = theirCharacter:FindFirstChild("Humanoid")
                 
                 if theirRoot and theirHumanoid then
-                    isWanted = theirRoot:GetAttribute("IsWanted")
+                    
+                    local isWanted = theirRoot:GetAttribute("IsWanted")
                     
                     if isWanted == true and theirHumanoid.Health > 24 then
-                        distance = (myRoot.Position - theirRoot.Position).Magnitude
+                        local distance = (myRoot.Position - theirRoot.Position).Magnitude
                         
                         if distance < shortestDistance then
                             shortestDistance = distance
@@ -3906,9 +4228,10 @@ function findNearestWantedPlayer()
     return bestTarget
 end
 
-autoTaserLoop = nil
 
-function startAutoTaser()
+local autoTaserLoop = nil
+
+local function startAutoTaser()
     if autoTaserLoop then
         autoTaserLoop:Disconnect()
     end
@@ -3916,7 +4239,7 @@ function startAutoTaser()
     autoTaserLoop = RunService.Heartbeat:Connect(function()
         if not AutoTaserSettings.enabled then return end
 
-        currentTime = tick()
+        local currentTime = tick()
         if currentTime - AutoTaserSettings.lastFireTime < AutoTaserSettings.fireCooldown then
             return
         end
@@ -3925,28 +4248,28 @@ function startAutoTaser()
             if not findTaserRemote() then return end
         end
 
-        character = LocalPlayer.Character
+        local character = LocalPlayer.Character
         if not character then return end
 
-        taser = character:FindFirstChild("Taser")
+        local taser = character:FindFirstChild("Taser")
         if not taser then return end
 
-        root = character:FindFirstChild("HumanoidRootPart")
+        local root = character:FindFirstChild("HumanoidRootPart")
         if not root then return end
 
-        target = findNearestWantedPlayer()
+        local target = findNearestWantedPlayer()
         if not target then return end
 
-        targetPosition = target.root.Position
-        targetVelocity = target.root.AssemblyLinearVelocity or Vector3.zero
+        local targetPosition = target.root.Position
+        local targetVelocity = target.root.AssemblyLinearVelocity or Vector3.zero
 
-        predictedPosition =
+        local predictedPosition =
             targetPosition + (targetVelocity * AutoTaserSettings.prediction)
 
-        aimDirection =
+        local aimDirection =
             (predictedPosition - root.Position).Unit
 
-        success = pcall(function()
+        local success = pcall(function()
             taserRemote:FireServer(taser, predictedPosition, aimDirection)
         end)
 
@@ -3956,7 +4279,77 @@ function startAutoTaser()
     end)
 end
 
+
+
 startAutoTaser()
+
+--[[local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
+local AutoStopStickRemote = game:GetService("ReplicatedStorage")["WvO"]["eb73d645-ab5e-4785-8a1f-ceacf2e95489"]
+
+local autoStopStickEnabled = false
+local autoStopStickConnection
+
+local function getNearestPlayerInCar()
+    local nearestPlayer = nil
+    local nearestCar = nil
+    local nearestDistance = math.huge
+    local localCharacter = LocalPlayer.Character
+    local localRoot = localCharacter and localCharacter:FindFirstChild("HumanoidRootPart")
+    
+    if not localRoot then return nil, nil, math.huge end
+    
+    for _, car in pairs(Workspace.Vehicles:GetChildren()) do
+        local body = car:FindFirstChild("Body")
+        
+        if body then
+            local seat = car:FindFirstChildWhichIsA("VehicleSeat", true)
+            
+            if seat and seat.Occupant then
+                local character = seat.Occupant.Parent
+                local player = Players:GetPlayerFromCharacter(character)
+                
+                if player and player ~= LocalPlayer then
+                    local distance = (localRoot.Position - body.Position).Magnitude
+                    if distance < nearestDistance then
+                        nearestDistance = distance
+                        nearestPlayer = player
+                        nearestCar = car
+                    end
+                end
+            end
+        end
+    end
+    
+    return nearestPlayer, nearestCar, nearestDistance
+end
+
+PoliceTab:AddToggle({
+    Name = "Auto Stop-Stick",
+    Default = false,
+    Callback = function(Value)
+        autoStopStickEnabled = Value
+        
+        if autoStopStickEnabled then
+            autoStopStickConnection = RunService.Heartbeat:Connect(function()
+                local nearestPlayer, nearestCar, distance = getNearestPlayerInCar()
+                
+                if nearestPlayer and nearestCar and distance < 100 then 
+                    AutoStopStickRemote:FireServer(nearestCar)
+                    wait(2)
+                end
+            end)
+        else
+            if autoStopStickConnection then
+                autoStopStickConnection:Disconnect()
+                autoStopStickConnection = nil
+            end
+        end
+    end
+}) --]]
+
 
 PoliceTab:AddToggle({
     Name = "Enable Auto-Taser",
@@ -3971,6 +4364,7 @@ PoliceTab:AddToggle({
                 Content = "Auto-Taser enabled",
                 Time = 3
             })
+            
             
             if not taserRemote and not findTaserRemote() then
                 OrionLib:MakeNotification({
@@ -3999,7 +4393,7 @@ PoliceTab:AddSlider({
     Color = Color3.fromRGB(255, 255, 255),
     Callback = function(value)
         AutoTaserSettings.maxRange = value
-        SaveSetting("MaxTaserRange", value)
+        SaveSetting("MaxTaserRange", val)
     end
 })
 
@@ -4013,16 +4407,17 @@ PoliceTab:AddSlider({
     Color = Color3.fromRGB(255, 255, 255),
     Callback = function(value)
         AutoTaserSettings.prediction = value
-        SaveSetting("PredictionTaser", value)
+        SaveSetting("PredictionTaser", val)
     end
 })
+
 
 PoliceTab:AddSection({
     Name = "Taser Customization"
 })
 
-selectedTaserColor = Color3.fromRGB(255, 255, 0)
-selectedTaserMaterial = "SmoothPlastic"
+local selectedTaserColor = Color3.fromRGB(255, 255, 0)
+local selectedTaserMaterial = "SmoothPlastic"
 
 PoliceTab:AddColorpicker({
     Name = "Taser Color",
@@ -4057,15 +4452,15 @@ PoliceTab:AddDropdown({
 PoliceTab:AddButton({
     Name = "Apply to Taser",
     Callback = function()
-        character = LocalPlayer.Character
-        taser = nil
+        local character = LocalPlayer.Character
+        local taser = nil
         
         if character then
             taser = character:FindFirstChild("Taser")
         end
         
         if not taser then
-            backpack = LocalPlayer:FindFirstChild("Backpack")
+            local backpack = LocalPlayer:FindFirstChild("Backpack")
             if backpack then
                 taser = backpack:FindFirstChild("Taser")
             end
@@ -4095,18 +4490,19 @@ PoliceTab:AddButton({
     end
 })
 
+
 PoliceTab:AddButton({
     Name = "Reset Taser to Default",
     Callback = function()
-        character = LocalPlayer.Character
-        taser = nil
+        local character = LocalPlayer.Character
+        local taser = nil
         
         if character then
             taser = character:FindFirstChild("Taser")
         end
         
         if not taser then
-            backpack = LocalPlayer:FindFirstChild("Backpack")
+            local backpack = LocalPlayer:FindFirstChild("Backpack")
             if backpack then
                 taser = backpack:FindFirstChild("Taser")
             end
@@ -4132,42 +4528,42 @@ PoliceTab:AddButton({
 
 PoliceTab:AddSection({Name = "Farm"})
 
-RadarFarm = {
+local RadarFarm = {
     Enabled = false,
     FireRate = 1, 
     ScanInterval = 0.1, 
 }
 
-function scanAndProcessVehicles(character, radarTool)
+local function scanAndProcessVehicles(character, radarTool)
     if not character or not radarTool then return end
     
-    vehicles = workspace.Vehicles:GetChildren()
-    characterRoot = character.PrimaryPart
+    local vehicles = workspace.Vehicles:GetChildren()
+    local characterRoot = character.PrimaryPart
     if not characterRoot then return end
     
     for _, vehicle in ipairs(vehicles) do
         if not RadarFarm.Enabled then break end
         
-        driveSeat = vehicle:FindFirstChild("DriveSeat")
+        local driveSeat = vehicle:FindFirstChild("DriveSeat")
         if not driveSeat then continue end
         
-        targetPosition = driveSeat.Position
-        direction = (targetPosition - characterRoot.Position).Unit
+        local targetPosition = driveSeat.Position
+        local direction = (targetPosition - characterRoot.Position).Unit
         
         Remote:FireServer(radarTool, targetPosition, direction)
     end
 end
 
-function startRadarFarm()
-    lastFireTime = 0
+local function startRadarFarm()
+    local lastFireTime = 0
     
     while RadarFarm.Enabled do
-        currentTime = tick()
+        local currentTime = tick()
         
         if currentTime - lastFireTime >= RadarFarm.FireRate then
-            character = LocalPlayer.Character
+            local character = LocalPlayer.Character
             if character then
-                radarTool = character:FindFirstChild("Radar Gun")
+                local radarTool = character:FindFirstChild("Radar Gun")
                 if radarTool and Remote then
                     scanAndProcessVehicles(character, radarTool)
                 end
@@ -4179,7 +4575,7 @@ function startRadarFarm()
     end
 end
 
-function onRadarFarmToggle(newState)
+local function onRadarFarmToggle(newState)
     RadarFarm.Enabled = newState
     
     if newState then
@@ -4187,17 +4583,23 @@ function onRadarFarmToggle(newState)
     end
 end
 
+
 PoliceTab:AddToggle({
     Name = "Radar Farm",
     Default = false,
     Callback = onRadarFarmToggle
 })
 
+-------------
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
 PlayerTab:AddSection({
     Name = "Preset Outfits"
 })
 
-presetOutfits = {
+local presetOutfits = {
     {Name = "Headless", Type = "headless"},
     {Name = "Invisible", Type = "transparency", Value = 1},
     {Name = "Ghost", Type = "transparency", Value = 0.5},
@@ -4206,10 +4608,11 @@ presetOutfits = {
     {Name = "Neon Pink", Type = "color", Color = Color3.fromRGB(255, 0, 255)}
 }
 
-originalStates = {}
+-- Cache original part colors and transparency
+local originalStates = {}
 
-function cacheOriginalStates()
-    char = LocalPlayer.Character
+local function cacheOriginalStates()
+    local char = LocalPlayer.Character
     if not char then return end
     originalStates = {}
     for _, part in ipairs(char:GetChildren()) do
@@ -4228,8 +4631,8 @@ if LocalPlayer.Character then
     cacheOriginalStates()
 end
 
-function resetToDefault()
-    char = LocalPlayer.Character
+local function resetToDefault()
+    local char = LocalPlayer.Character
     if not char then return end
     for part, state in pairs(originalStates) do
         if part and part.Parent then
@@ -4239,10 +4642,10 @@ function resetToDefault()
     end
 end
 
-function applyHeadless()
-    char = LocalPlayer.Character
+local function applyHeadless()
+    local char = LocalPlayer.Character
     if not char then return end
-    head = char:FindFirstChild("Head")
+    local head = char:FindFirstChild("Head")
     if head then
         head.Transparency = 1
         for _, obj in ipairs(head:GetChildren()) do
@@ -4253,8 +4656,8 @@ function applyHeadless()
     end
 end
 
-function applyTransparency(value)
-    char = LocalPlayer.Character
+local function applyTransparency(value)
+    local char = LocalPlayer.Character
     if not char then return end
     for _, part in ipairs(char:GetChildren()) do
         if part:IsA("BasePart") then
@@ -4263,8 +4666,8 @@ function applyTransparency(value)
     end
 end
 
-function applyColor(color)
-    char = LocalPlayer.Character
+local function applyColor(color)
+    local char = LocalPlayer.Character
     if not char then return end
     for _, part in ipairs(char:GetChildren()) do
         if part:IsA("BasePart") then
@@ -4273,7 +4676,8 @@ function applyColor(color)
     end
 end
 
-presetDropdown = PlayerTab:AddDropdown({
+-- Preset Dropdown
+local presetDropdown = PlayerTab:AddDropdown({
     Name = "Select Preset",
     Options = {},
     Default = "",
@@ -4301,8 +4705,8 @@ presetDropdown = PlayerTab:AddDropdown({
     end
 })
 
-function populatePresets()
-    names = {}
+local function populatePresets()
+    local names = {}
     for _, preset in ipairs(presetOutfits) do
         table.insert(names, preset.Name)
     end
@@ -4311,6 +4715,7 @@ end
 
 populatePresets()
 
+-- Quick Actions
 PlayerTab:AddSection({ Name = "Quick Actions" })
 
 PlayerTab:AddButton({
@@ -4325,17 +4730,18 @@ PlayerTab:AddButton({
     end
 })
 
+-- Copy Player Outfit Section
 PlayerTab:AddSection({ Name = "Copy Player Outfit" })
 
-playerListDropdown = PlayerTab:AddDropdown({
+local playerListDropdown = PlayerTab:AddDropdown({
     Name = "Select Player",
     Options = {"No players"},
     Default = "No players",
     Callback = function() end
 })
 
-function updatePlayerList()
-    names = {}
+local function updatePlayerList()
+    local names = {}
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer then
             table.insert(names, plr.Name)
@@ -4347,6 +4753,7 @@ function updatePlayerList()
     playerListDropdown:Refresh(names, names[1])
 end
 
+-- Your exact copyFullOutfit function
 copyFullOutfit = function(player)
     targetChar = player.Character
     myChar = LocalPlayer.Character
@@ -4387,9 +4794,9 @@ end
 PlayerTab:AddButton({
     Name = "Copy Selected Outfit",
     Callback = function()
-        selected = playerListDropdown.Value
+        local selected = playerListDropdown.Value
         if selected and selected ~= "No players" then
-            target = Players:FindFirstChild(selected)
+            local target = Players:FindFirstChild(selected)
             if target then
                 copyFullOutfit(target)
                 game.StarterGui:SetCore("SendNotification", {
@@ -4417,6 +4824,7 @@ game.StarterGui:SetCore("SendNotification", {
     Duration = 5
 })
 
+
 AnimTab:AddSection({
     Name = "Animations"
 })
@@ -4443,7 +4851,7 @@ cuffedAnimTrack = nil
 deadAnimEnabled = false
 deadAnimTrack = nil
 
-function setupCuffedAnim(character)
+setupCuffedAnim = function(character)
     humanoid = character:WaitForChild("Humanoid")
     animator = humanoid:WaitForChild("Animator") or Instance.new("Animator", humanoid)
     animation = Instance.new("Animation")
@@ -4456,7 +4864,7 @@ function setupCuffedAnim(character)
     end
 end
 
-function setupDeadAnim(character)
+setupDeadAnim = function(character)
     humanoid = character:WaitForChild("Humanoid")
     animator = humanoid:WaitForChild("Animator") or Instance.new("Animator", humanoid)
     animation = Instance.new("Animation")
@@ -4469,7 +4877,7 @@ function setupDeadAnim(character)
     end
 end
 
-function playDanceAnimation(animationId)
+playDanceAnimation = function(animationId)
     if currentAnimation then
         currentAnimation:Stop()
         currentAnimation = nil
@@ -4523,7 +4931,7 @@ function playDanceAnimation(animationId)
     })
 end
 
-function stopCurrentAnimation()
+stopCurrentAnimation = function()
     if currentAnimation then
         currentAnimation:Stop()
         currentAnimation = nil
@@ -4547,7 +4955,7 @@ danceDropdown = AnimTab:AddDropdown({
     end
 })
 
-function populateDanceDropdown()
+populateDanceDropdown = function()
     danceNames = {}
     for _, dance in ipairs(danceAnimations) do
         table.insert(danceNames, dance.Name)
@@ -4557,7 +4965,7 @@ end
 
 populateDanceDropdown()
 
-function getAnimationIdByName(name)
+getAnimationIdByName = function(name)
     for _, dance in ipairs(danceAnimations) do
         if dance.Name == name then
             return dance.Id
@@ -4607,12 +5015,12 @@ AnimTab:AddToggle({
     Default = GetSetting("AutoStopMoving", false),
     Callback = function(value)
         autoStopOnMove = value
-        SaveSetting("AutoStopMoving", value)
+        SaveSetting("AutoStopMoving")
     end
 })
 
-function setupAutoStop(character)
-    humanoid = character:WaitForChild("Humanoid")
+setupAutoStop = function(character)
+    local humanoid = character:WaitForChild("Humanoid")
 
     humanoid.Running:Connect(function(speed)
         if autoStopOnMove and isAnimationPlaying and speed > 2 then
@@ -4620,6 +5028,7 @@ function setupAutoStop(character)
         end
     end)
 end
+
 
 AnimTab:AddSection({
     Name = "Fake Anims"
@@ -4734,6 +5143,7 @@ if LocalPlayer.Character then
     setupAutoStop(LocalPlayer.Character)
 end
 
+
 LocalPlayer.CharacterAdded:Connect(setupCuffedAnim)
 LocalPlayer.CharacterAdded:Connect(setupDeadAnim)
 
@@ -4742,9 +5152,12 @@ if LocalPlayer.Character then
     setupDeadAnim(LocalPlayer.Character)
 end
 
+
+
 MiscTab:AddSection({
     Name = "Utilities"
 })
+
 
 MiscTab:AddParagraph("Untested due to Executor downtime.", "Give Feedback with a High Unc Executor in Discord")
 
@@ -4754,7 +5167,7 @@ MiscTab:AddButton({
         if getfenv().firsttime then return end
         getfenv().firsttime = true
         for _, v in pairs(getgc(true)) do
-            if type(v) == "function" and debug.getinfo(v).name == "setStamina" then
+            if type(v) == "function" and getinfo(v).name == "setStamina" then
                 hookfunction(v, function(...)
                     return ..., math.huge
                 end)
@@ -4764,17 +5177,18 @@ MiscTab:AddButton({
     end
 }) 
 
+
 MiscTab:AddButton({
     Name = "Reset player",
     Callback = function()
-        humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+        local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
         if humanoid then
             humanoid.Health = 0
         end
     end
 })
 
-InfiniteJumpEnabled = false
+local InfiniteJumpEnabled = false
 MiscTab:AddToggle({
     Name = "Infinite Jump",
     Default = false,
@@ -4785,9 +5199,9 @@ MiscTab:AddToggle({
 
 game:GetService("UserInputService").JumpRequest:Connect(function()
     if InfiniteJumpEnabled then
-        character = LocalPlayer.Character
+        local character = LocalPlayer.Character
         if character then
-            humanoid = character:FindFirstChildOfClass("Humanoid")
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
             if humanoid then
                 humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
             end
@@ -4795,8 +5209,8 @@ game:GetService("UserInputService").JumpRequest:Connect(function()
     end
 end)
 
-noclipEnabled = false
-noclipConnection = nil
+local noclipEnabled = false
+local noclipConnection = nil
 
 MiscTab:AddToggle({
     Name = "Noclip",
@@ -4807,7 +5221,7 @@ MiscTab:AddToggle({
         if val then
             noclipConnection = RunService.Stepped:Connect(function()
                 if noclipEnabled then
-                    character = LocalPlayer.Character
+                    local character = LocalPlayer.Character
                     if character then
                         for _, part in pairs(character:GetDescendants()) do
                             if part:IsA("BasePart") then
@@ -4823,7 +5237,7 @@ MiscTab:AddToggle({
                 noclipConnection = nil
             end
             
-            character = LocalPlayer.Character
+            local character = LocalPlayer.Character
             if character then
                 for _, part in pairs(character:GetDescendants()) do
                     if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
@@ -4835,7 +5249,7 @@ MiscTab:AddToggle({
     end
 })
 
-AntiAFK = false
+local AntiAFK = false
 
 MiscTab:AddToggle({
     Name = "Anti AFK",
@@ -4844,7 +5258,7 @@ MiscTab:AddToggle({
         AntiAFK = val
         SaveSetting("AntiAFK", val)
         if val then
-            VirtualUser = game:GetService("VirtualUser")
+            local VirtualUser = game:GetService("VirtualUser")
             LocalPlayer.Idled:Connect(function()
                 if AntiAFK then
                     VirtualUser:CaptureController()
@@ -4861,7 +5275,7 @@ MiscTab:AddToggle({
     Callback = function(val)
         if val then
             getfenv().nofall = RunService.Heartbeat:Connect(function()
-                hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                 if hrp and hrp.Velocity.Y < -30 and workspace:Raycast(hrp.Position, Vector3.new(0, -20, 0)) then
                     hrp.Velocity = Vector3.zero
                 end
@@ -4872,6 +5286,7 @@ MiscTab:AddToggle({
         end
     end
 })
+
 
 MiscTab:AddToggle({
     Name = "Anti Downed",
@@ -4887,13 +5302,13 @@ MiscTab:AddToggle({
     end,
 })
 
-lighting = game:GetService("Lighting")
-blurNames = {"Blur", "Bloom", "Flash", "Blind", "White", "BlurEffect", "BloomEffect", "ColorCorrectionEffect"}
-antiBlurActive = false
-blurCons = {}
+local lighting = game:GetService("Lighting")
+local blurNames = {"Blur", "Bloom", "Flash", "Blind", "White", "BlurEffect", "BloomEffect", "ColorCorrectionEffect"}
+local antiBlurActive = false
+local blurCons = {}
 
-function isBlurOrFlashEffect(effect)
-    n = effect.Name:lower()
+local function isBlurOrFlashEffect(effect)
+    local n = effect.Name:lower()
     if effect:IsA("BlurEffect") or effect:IsA("BloomEffect") or effect:IsA("ColorCorrectionEffect") then
         return true
     end
@@ -4905,7 +5320,7 @@ function isBlurOrFlashEffect(effect)
     return false
 end
 
-function removeAllBlur()
+local function removeAllBlur()
     for _,v in pairs(lighting:GetChildren()) do
         if isBlurOrFlashEffect(v) then
             pcall(function() v:Destroy() end)
@@ -4913,7 +5328,7 @@ function removeAllBlur()
     end
 end
 
-function enableAntiBlur()
+local function enableAntiBlur()
     table.insert(blurCons, lighting.ChildAdded:Connect(function(child)
         if isBlurOrFlashEffect(child) then
             pcall(function() child:Destroy() end)
@@ -4923,7 +5338,7 @@ function enableAntiBlur()
     removeAllBlur()
 end
 
-function disableAntiBlur()
+local function disableAntiBlur()
     for _,c in pairs(blurCons) do
         pcall(function() c:Disconnect() end)
     end
@@ -4944,27 +5359,78 @@ MiscTab:AddToggle({
     end
 })
 
+MiscTab:AddButton({
+    Name = "Reset Player Appearance",
+    Callback = function()
+        local character = LocalPlayer.Character
+        if not character then return end
+        
+        for part, color in pairs(originalPlayerColors) do
+            if part and part.Parent then
+                part.Color = color
+            end
+        end
+        
+        for part, material in pairs(originalPlayerMaterials) do
+            if part and part.Parent then
+                pcall(function()
+                    part.Material = material
+                end)
+            end
+        end
+        
+        originalPlayerColors = {}
+        originalPlayerMaterials = {}
+        
+        OrionLib:MakeNotification({
+            Name = "Player Reset",
+            Content = "Player appearance reset to default",
+            Time = 3
+        })
+    end
+})
+
+
+MiscTab:AddTextbox({
+    Name = "Custom Plate",
+    Default = "HeavenlyHub",
+    TextDisappear = false,
+    Callback = function(text)
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        for _, gui in ipairs(workspace:GetDescendants()) do
+            if gui:IsA("SurfaceGui") and gui.Parent:IsA("BasePart") and (gui.Parent.Position - hrp.Position).Magnitude < 15 then
+                local label = gui:FindFirstChildWhichIsA("TextLabel")
+                if label then
+                    label.Text = text
+                end
+            end
+        end
+    end
+})
+
+
 MiscTab:AddSection({
     Name = "Player"
 })
 
-selectedPlayerColor = Color3.fromRGB(255, 255, 255)
-selectedPlayerMaterial = "SmoothPlastic"
-originalPlayerColors = {}
-originalPlayerMaterials = {}
+local selectedPlayerColor = Color3.fromRGB(255, 255, 255)
+local selectedPlayerMaterial = "SmoothPlastic"
+local originalPlayerColors = {}
+local originalPlayerMaterials = {}
 
 MiscTab:AddColorpicker({
     Name = "Player Color",
     Default = GetSetting("PlayerCol", selectedPlayerColor),
     Callback = function(color)
         selectedPlayerColor = color
-        SaveSetting("PlayerCol", color)
+        SaveSetting("PlayerCol")
     end
 })
 
 MiscTab:AddDropdown({
     Name = "Player Material",
-    Default = GetSetting("PlayerMat", "SmoothPlastic"),
+    Default = GetSetting("PlayerMat", SmoothPlastic),
     Options = {
         "Plastic",
         "SmoothPlastic",
@@ -4987,7 +5453,7 @@ MiscTab:AddDropdown({
 MiscTab:AddButton({
     Name = "Apply to Player",
     Callback = function()
-        character = LocalPlayer.Character
+        local character = LocalPlayer.Character
         if not character then 
             OrionLib:MakeNotification({
                 Name = "Error",
@@ -5020,54 +5486,7 @@ MiscTab:AddButton({
     end
 })
 
-MiscTab:AddButton({
-    Name = "Reset Player Appearance",
-    Callback = function()
-        character = LocalPlayer.Character
-        if not character then return end
-        
-        for part, color in pairs(originalPlayerColors) do
-            if part and part.Parent then
-                part.Color = color
-            end
-        end
-        
-        for part, material in pairs(originalPlayerMaterials) do
-            if part and part.Parent then
-                pcall(function()
-                    part.Material = material
-                end)
-            end
-        end
-        
-        originalPlayerColors = {}
-        originalPlayerMaterials = {}
-        
-        OrionLib:MakeNotification({
-            Name = "Player Reset",
-            Content = "Player appearance reset to default",
-            Time = 3
-        })
-    end
-})
-
-MiscTab:AddTextbox({
-    Name = "Custom Plate",
-    Default = "HeavenlyHub",
-    TextDisappear = false,
-    Callback = function(text)
-        hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if not hrp then return end
-        for _, gui in ipairs(workspace:GetDescendants()) do
-            if gui:IsA("SurfaceGui") and gui.Parent:IsA("BasePart") and (gui.Parent.Position - hrp.Position).Magnitude < 15 then
-                label = gui:FindFirstChildWhichIsA("TextLabel")
-                if label then
-                    label.Text = text
-                end
-            end
-        end
-    end
-})
+-- pfly
 
 playerFly = false
 flyBind = Enum.KeyCode.V
@@ -5078,7 +5497,7 @@ flyAttachment = nil
 flyAlignPosition = nil
 flyAlignOrientation = nil
 
-function enableFly()
+enableFly = function()
     character = LocalPlayer.Character
     if not character then return end
     root = character:FindFirstChild("HumanoidRootPart")
@@ -5130,7 +5549,7 @@ function enableFly()
     end)
 end
 
-function disableFly()
+disableFly = function()
     isFlying = false
     humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
     if humanoid then humanoid.PlatformStand = false end
@@ -5182,7 +5601,7 @@ end)
 spinbotEnabled = false
 spinSpeed = 10
 
-function updateSpinbot()
+updateSpinbot = function()
     if spinbotEnabled and LocalPlayer.Character then
         hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if hrp then
@@ -5221,7 +5640,7 @@ RunService.RenderStepped:Connect(function()
     updateSpinbot()
 end)
 
-nightVisionSettings = {
+local nightVisionSettings = {
     enabled = false,
     color = Color3.fromRGB(0, 255, 0),
     brightness = 5,
@@ -5231,12 +5650,17 @@ nightVisionSettings = {
     originalFogEnd = nil
 }
 
+
+local lighting = game:GetService("Lighting")
+local RunService = game:GetService("RunService")
+
+
 nightVisionSettings.originalAmbient = lighting.Ambient
 nightVisionSettings.originalOutdoorAmbient = lighting.OutdoorAmbient
 nightVisionSettings.originalBrightness = lighting.Brightness
 nightVisionSettings.originalFogEnd = lighting.FogEnd
 
-function updateNightVision(forceDisable)
+local function updateNightVision(forceDisable)
     if nightVisionSettings.enabled and not forceDisable then
         lighting.Ambient = nightVisionSettings.color
         lighting.OutdoorAmbient = nightVisionSettings.color
@@ -5250,15 +5674,18 @@ function updateNightVision(forceDisable)
     end
 end
 
+
 RunService.RenderStepped:Connect(function()
     if nightVisionSettings.enabled then
         updateNightVision()
     end
 end)
 
+
 MiscTab:AddSection({
     Name = "Night Vision Settings"
 })
+
 
 MiscTab:AddToggle({
     Name = "Enable Night Vision",
@@ -5272,6 +5699,7 @@ MiscTab:AddToggle({
     end
 })
 
+
 MiscTab:AddColorpicker({
     Name = "Night Vision Color",
     Default = nightVisionSettings.color,
@@ -5282,6 +5710,7 @@ MiscTab:AddColorpicker({
         end
     end
 })
+
 
 MiscTab:AddSlider({
     Name = "Brightness",
@@ -5299,8 +5728,9 @@ MiscTab:AddSlider({
     end
 })
 
-jumpBoostEnabled = false
-jumpMultiplier = 1
+
+local jumpBoostEnabled = false
+local jumpMultiplier = 1
 
 MiscTab:AddToggle({
     Name = "Jump Boost",
@@ -5324,13 +5754,14 @@ MiscTab:AddSlider({
 
 RunService.Heartbeat:Connect(function()
     if jumpBoostEnabled and jumpMultiplier > 1 then
-        character = LocalPlayer.Character
+        local character = LocalPlayer.Character
         if not character then return end
         
-        humanoid = character:FindFirstChild("Humanoid")
-        hrp = character:FindFirstChild("HumanoidRootPart")
+        local humanoid = character:FindFirstChild("Humanoid")
+        local hrp = character:FindFirstChild("HumanoidRootPart")
         
         if humanoid and hrp then
+            
             if humanoid:GetState() == Enum.HumanoidStateType.Jumping then
                 hrp.AssemblyLinearVelocity = Vector3.new(
                     hrp.AssemblyLinearVelocity.X,
@@ -5342,8 +5773,8 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
-speedActive = false
-speedValue = 1
+local speedActive = false
+local speedValue = 1
 
 MiscTab:AddToggle({
     Name = "Speed",
@@ -5369,14 +5800,14 @@ RunService.Stepped:Connect(function()
     if not speedActive then return end
     if speedValue <= 1 then return end
 
-    char = LocalPlayer.Character
+    local char = LocalPlayer.Character
     if not char then return end
 
-    humanoid = char:FindFirstChild("Humanoid")
-    hrp = char:FindFirstChild("HumanoidRootPart")
+    local humanoid = char:FindFirstChild("Humanoid")
+    local hrp = char:FindFirstChild("HumanoidRootPart")
 
     if humanoid and hrp then
-        moveDir = humanoid.MoveDirection
+        local moveDir = humanoid.MoveDirection
 
         if moveDir.Magnitude > 0 then
             hrp.AssemblyLinearVelocity = Vector3.new(
@@ -5388,11 +5819,13 @@ RunService.Stepped:Connect(function()
     end
 end)
 
+
+
 MiscTab:AddSection({
     Name = "Camera"
 })
 
-MAX_ZOOM = 5000
+local MAX_ZOOM = 5000
 
 MiscTab:AddSlider({
     Name = "Camera Zoom",
@@ -5410,7 +5843,7 @@ MiscTab:AddToggle({
     Name = "Wall Transparency",
     Default = false,
     Callback = function(value)
-        player = game.Players.LocalPlayer
+        local player = game.Players.LocalPlayer
         if value then
             player.DevCameraOcclusionMode = Enum.DevCameraOcclusionMode.Invisicam
         else
@@ -5418,6 +5851,8 @@ MiscTab:AddToggle({
         end
     end
 })
+
+
 
 MiscTab:AddSection({
     Name = "Broken & Funny stuff"
@@ -5434,15 +5869,15 @@ MiscTab:AddToggle({
 
         if Value then
             task.spawn(function()
-                bounceHeight = 1.5
-                bounceDirection = 1
-                bounceSpeed = 0.05
+                local bounceHeight = 1.5
+                local bounceDirection = 1
+                local bounceSpeed = 0.05
                 
                 while _G.bbounceActive do
                     pcall(function()
-                        vehicle = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
+                        local vehicle = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
                         if vehicle then
-                            driveSeat = vehicle:FindFirstChild("DriveSeat", true)
+                            local driveSeat = vehicle:FindFirstChild("DriveSeat", true)
                             if driveSeat then
                                 for _, v in pairs(driveSeat:GetChildren()) do
                                     if v:IsA("SpringConstraint") then
@@ -5453,7 +5888,8 @@ MiscTab:AddToggle({
                                 end
                             end
                         end
-                    end)
+                end)
+                    
                     
                     if bounceHeight >= 2 then
                         bounceDirection = -1
@@ -5467,9 +5903,9 @@ MiscTab:AddToggle({
             end)
         else
             pcall(function()
-                vehicle = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
+                local vehicle = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
                 if vehicle then
-                    driveSeat = vehicle:FindFirstChild("DriveSeat", true)
+                    local driveSeat = vehicle:FindFirstChild("DriveSeat", true)
                     if driveSeat then
                         for _, v in pairs(driveSeat:GetChildren()) do
                             if v:IsA("SpringConstraint") then
@@ -5498,20 +5934,22 @@ MiscTab:AddSlider({
     end
 })
 
+
 MiscTab:AddSection({
     Name = "Performance Monitor"
 })
 
-fpsEnabled = false
-fpsLabel = nil
 
-function createFPSCounter()
-    screenGui = Instance.new("ScreenGui")
+local fpsEnabled = false
+local fpsLabel = nil
+
+local function createFPSCounter()
+    local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "FPSCounter"
     screenGui.ResetOnSpawn = false
     screenGui.Parent = game.CoreGui
     
-    frame = Instance.new("Frame")
+    local frame = Instance.new("Frame")
     frame.Size = UDim2.new(0, 150, 0, 80)
     frame.Position = UDim2.new(0, 10, 0, 10)
     frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
@@ -5519,11 +5957,11 @@ function createFPSCounter()
     frame.BorderSizePixel = 0
     frame.Parent = screenGui
     
-    corner = Instance.new("UICorner")
+    local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = frame
     
-    fpsText = Instance.new("TextLabel")
+    local fpsText = Instance.new("TextLabel")
     fpsText.Name = "FPS"
     fpsText.Size = UDim2.new(1, 0, 0.5, 0)
     fpsText.Position = UDim2.new(0, 0, 0, 0)
@@ -5534,7 +5972,7 @@ function createFPSCounter()
     fpsText.Font = Enum.Font.GothamBold
     fpsText.Parent = frame
     
-    pingText = Instance.new("TextLabel")
+    local pingText = Instance.new("TextLabel")
     pingText.Name = "Ping"
     pingText.Size = UDim2.new(1, 0, 0.5, 0)
     pingText.Position = UDim2.new(0, 0, 0.5, 0)
@@ -5548,10 +5986,10 @@ function createFPSCounter()
     return screenGui
 end
 
-function updateFPSCounter()
-    fps = 0
-    lastUpdate = tick()
-    frameCount = 0
+local function updateFPSCounter()
+    local fps = 0
+    local lastUpdate = tick()
+    local frameCount = 0
     
     RunService.RenderStepped:Connect(function()
         frameCount = frameCount + 1
@@ -5561,8 +5999,8 @@ function updateFPSCounter()
             lastUpdate = tick()
             
             if fpsLabel and fpsEnabled then
-                fpsText = fpsLabel:FindFirstChild("Frame"):FindFirstChild("FPS")
-                pingText = fpsLabel:FindFirstChild("Frame"):FindFirstChild("Ping")
+                local fpsText = fpsLabel:FindFirstChild("Frame"):FindFirstChild("FPS")
+                local pingText = fpsLabel:FindFirstChild("Frame"):FindFirstChild("Ping")
                 
                 if fpsText then
                     fpsText.Text = "FPS: " .. fps
@@ -5577,7 +6015,7 @@ function updateFPSCounter()
                 end
                 
                 if pingText then
-                    ping = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()
+                    local ping = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()
                     pingText.Text = "Ping: " .. math.floor(ping) .. "ms"
                    
                     if ping <= 100 then
@@ -5665,9 +6103,10 @@ MiscTab:AddButton({
     end
 })
 
+
 ESPTab:AddSection({Name = "Radar"})
 
-config = {
+local config = {
     enabled = false,
     showNames = true,
     showCompass = true,
@@ -5682,7 +6121,7 @@ config = {
     range = 500
 }
 
-state = {
+local state = {
     frame = nil,
     dragging = false,
     dragStart = nil,
@@ -5690,14 +6129,14 @@ state = {
     waypoint = nil
 }
 
-function createUI()
-    sg = Instance.new("ScreenGui")
+local function createUI()
+    local sg = Instance.new("ScreenGui")
     sg.Name = "MiniMapGui"
     sg.ResetOnSpawn = false
     sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     sg.Parent = game.CoreGui
     
-    frame = Instance.new("Frame")
+    local frame = Instance.new("Frame")
     frame.Name = "MiniMapFrame"
     frame.Size = UDim2.new(0, config.size, 0, config.size)
     frame.Position = UDim2.new(1, -220, 0, 20)
@@ -5706,22 +6145,23 @@ function createUI()
     frame.BorderSizePixel = 0
     frame.Parent = sg
     
-    corner = Instance.new("UICorner")
+    local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = frame
     
-    topBar = Instance.new("Frame")
+    -- Top bar
+    local topBar = Instance.new("Frame")
     topBar.Name = "TopBar"
     topBar.Size = UDim2.new(1, 0, 0, 25)
     topBar.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
     topBar.BorderSizePixel = 0
     topBar.Parent = frame
     
-    tCorner = Instance.new("UICorner")
+    local tCorner = Instance.new("UICorner")
     tCorner.CornerRadius = UDim.new(0, 8)
     tCorner.Parent = topBar
     
-    title = Instance.new("TextLabel")
+    local title = Instance.new("TextLabel")
     title.Text = "Radar"
     title.Size = UDim2.new(1, -70, 1, 0)
     title.Position = UDim2.new(0, 10, 0, 0)
@@ -5732,7 +6172,7 @@ function createUI()
     title.TextXAlignment = Enum.TextXAlignment.Left
     title.Parent = topBar
     
-    closeBtn = Instance.new("TextButton")
+    local closeBtn = Instance.new("TextButton")
     closeBtn.Text = "X"
     closeBtn.Size = UDim2.new(0, 20, 0, 20)
     closeBtn.Position = UDim2.new(1, -22.5, 0, 2.5)
@@ -5742,11 +6182,12 @@ function createUI()
     closeBtn.Font = Enum.Font.GothamBold
     closeBtn.Parent = topBar
     
-    cCorner = Instance.new("UICorner")
+    local cCorner = Instance.new("UICorner")
     cCorner.CornerRadius = UDim.new(0, 4)
     cCorner.Parent = closeBtn
     
-    map = Instance.new("Frame")
+    -- Map container
+    local map = Instance.new("Frame")
     map.Name = "MapContainer"
     map.Size = UDim2.new(1, -10, 1, -60)
     map.Position = UDim2.new(0, 5, 0, 30)
@@ -5756,11 +6197,12 @@ function createUI()
     map.ClipsDescendants = true
     map.Parent = frame
     
-    mCorner = Instance.new("UICorner")
+    local mCorner = Instance.new("UICorner")
     mCorner.CornerRadius = UDim.new(0, 6)
     mCorner.Parent = map
     
-    grid = Instance.new("Frame")
+    -- Grid
+    local grid = Instance.new("Frame")
     grid.Name = "GridFrame"
     grid.Size = UDim2.new(1, 0, 1, 0)
     grid.BackgroundTransparency = 1
@@ -5768,7 +6210,7 @@ function createUI()
     grid.Parent = map
     
     for i = 0, 4 do
-        h = Instance.new("Frame")
+        local h = Instance.new("Frame")
         h.Size = UDim2.new(1, 0, 0, 1)
         h.Position = UDim2.new(0, 0, i * 0.25, 0)
         h.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -5776,7 +6218,7 @@ function createUI()
         h.BorderSizePixel = 0
         h.Parent = grid
         
-        v = Instance.new("Frame")
+        local v = Instance.new("Frame")
         v.Size = UDim2.new(0, 1, 1, 0)
         v.Position = UDim2.new(i * 0.25, 0, 0, 0)
         v.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -5785,7 +6227,8 @@ function createUI()
         v.Parent = grid
     end
     
-    compass = Instance.new("Frame")
+    -- Compass
+    local compass = Instance.new("Frame")
     compass.Name = "CompassFrame"
     compass.Size = UDim2.new(0, 50, 0, 50)
     compass.Position = UDim2.new(1, -55, 0, 5)
@@ -5795,11 +6238,11 @@ function createUI()
     compass.Visible = config.showCompass
     compass.Parent = map
     
-    compCorner = Instance.new("UICorner")
+    local compCorner = Instance.new("UICorner")
     compCorner.CornerRadius = UDim.new(1, 0)
     compCorner.Parent = compass
     
-    dirs = {
+    local dirs = {
         {t = "N", p = UDim2.new(0.35, 0, 0, 2), c = Color3.fromRGB(255, 100, 100), s = 14},
         {t = "S", p = UDim2.new(0.35, 0, 0.7, 0), c = Color3.fromRGB(150, 150, 150), s = 11},
         {t = "E", p = UDim2.new(0.7, 0, 0.35, 0), c = Color3.fromRGB(150, 150, 150), s = 11},
@@ -5807,7 +6250,7 @@ function createUI()
     }
     
     for _, d in ipairs(dirs) do
-        lbl = Instance.new("TextLabel")
+        local lbl = Instance.new("TextLabel")
         lbl.Text = d.t
         lbl.Size = UDim2.new(0.3, 0, 0.3, 0)
         lbl.Position = d.p
@@ -5818,7 +6261,8 @@ function createUI()
         lbl.Parent = compass
     end
     
-    dot = Instance.new("Frame")
+    -- Player dot
+    local dot = Instance.new("Frame")
     dot.Name = "PlayerDot"
     dot.Size = UDim2.new(0, 10, 0, 10)
     dot.Position = UDim2.new(0.5, -5, 0.5, -5)
@@ -5827,11 +6271,11 @@ function createUI()
     dot.ZIndex = 10
     dot.Parent = map
     
-    dCorner = Instance.new("UICorner")
+    local dCorner = Instance.new("UICorner")
     dCorner.CornerRadius = UDim.new(1, 0)
     dCorner.Parent = dot
     
-    arrow = Instance.new("ImageLabel")
+    local arrow = Instance.new("ImageLabel")
     arrow.Name = "Arrow"
     arrow.Size = UDim2.new(1.5, 0, 1.5, 0)
     arrow.Position = UDim2.new(-0.25, 0, -0.25, 0)
@@ -5840,7 +6284,8 @@ function createUI()
     arrow.ImageColor3 = Color3.fromRGB(255, 255, 255)
     arrow.Parent = dot
     
-    info = Instance.new("Frame")
+    -- Info bar
+    local info = Instance.new("Frame")
     info.Name = "InfoBar"
     info.Size = UDim2.new(1, -10, 0, 20)
     info.Position = UDim2.new(0, 5, 1, -25)
@@ -5849,11 +6294,11 @@ function createUI()
     info.BorderSizePixel = 0
     info.Parent = frame
     
-    iCorner = Instance.new("UICorner")
+    local iCorner = Instance.new("UICorner")
     iCorner.CornerRadius = UDim.new(0, 4)
     iCorner.Parent = info
     
-    txt = Instance.new("TextLabel")
+    local txt = Instance.new("TextLabel")
     txt.Name = "InfoText"
     txt.Text = "Players: 0"
     txt.Size = UDim2.new(1, -10, 1, 0)
@@ -5865,6 +6310,7 @@ function createUI()
     txt.TextXAlignment = Enum.TextXAlignment.Left
     txt.Parent = info
     
+    -- Dragging
     topBar.InputBegan:Connect(function(inp)
         if inp.UserInputType == Enum.UserInputType.MouseButton1 then
             state.dragging = true
@@ -5875,7 +6321,7 @@ function createUI()
     
     game:GetService("UserInputService").InputChanged:Connect(function(inp)
         if state.dragging and inp.UserInputType == Enum.UserInputType.MouseMovement then
-            delta = inp.Position - state.dragStart
+            local delta = inp.Position - state.dragStart
             frame.Position = UDim2.new(state.frameStart.X.Scale, state.frameStart.X.Offset + delta.X,
                 state.frameStart.Y.Scale, state.frameStart.Y.Offset + delta.Y)
         end
@@ -5896,42 +6342,45 @@ function createUI()
     state.frame = frame
 end
 
-function updateMap()
+local function updateMap()
     if not config.enabled or not state.frame then return end
     
-    map = state.frame:FindFirstChild("MapContainer")
+    local map = state.frame:FindFirstChild("MapContainer")
     if not map then return end
     
-    char = LocalPlayer.Character
+    local char = LocalPlayer.Character
     if not char then return end
     
-    hrp = char:FindFirstChild("HumanoidRootPart")
+    local hrp = char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
     
-    pos = hrp.Position
-    _, y, _ = hrp.CFrame:ToEulerAnglesXYZ()
+    local pos = hrp.Position
+    local _, y, _ = hrp.CFrame:ToEulerAnglesXYZ()
     
-    dot = map:FindFirstChild("PlayerDot")
+    -- Update arrow
+    local dot = map:FindFirstChild("PlayerDot")
     if dot and dot:FindFirstChild("Arrow") then
         dot.Arrow.Rotation = math.deg(y)
     end
     
+    -- Clear markers
     for _, c in pairs(map:GetChildren()) do
         if c.Name:find("Marker") or c.Name:find("Label") or c.Name:find("Health") or c.Name:find("View") then
             c:Destroy()
         end
     end
     
-    count = 0
-    scale = config.zoom / 100
+    local count = 0
+    local scale = config.zoom / 100
     
+    -- Draw waypoint
     if config.trackWaypoint and state.waypoint then
-        rel = state.waypoint - pos
-        x = (rel.X / (100 * scale)) * 90
-        z = (rel.Z / (100 * scale)) * 90
+        local rel = state.waypoint - pos
+        local x = (rel.X / (100 * scale)) * 90
+        local z = (rel.Z / (100 * scale)) * 90
         
         if math.abs(x) < 85 and math.abs(z) < 85 then
-            w = Instance.new("Frame")
+            local w = Instance.new("Frame")
             w.Name = "WaypointMarker"
             w.Size = UDim2.new(0, 12, 0, 12)
             w.Position = UDim2.new(0.5, x - 6, 0.5, z - 6)
@@ -5944,20 +6393,23 @@ function updateMap()
         end
     end
     
+    -- Draw players
     for _, p in pairs(game.Players:GetPlayers()) do
         if p ~= LocalPlayer then
-            oc = p.Character
+            if config.enemiesOnly and p.Team == LocalPlayer.Team then continue end
+            
+            local oc = p.Character
             if oc and oc:FindFirstChild("HumanoidRootPart") then
-                op = oc.HumanoidRootPart.Position
-                rel = op - pos
+                local op = oc.HumanoidRootPart.Position
+                local rel = op - pos
                 
-                x = (rel.X / (100 * scale)) * 90
-                z = (rel.Z / (100 * scale)) * 90
+                local x = (rel.X / (100 * scale)) * 90
+                local z = (rel.Z / (100 * scale)) * 90
                 
                 if math.abs(x) < 85 and math.abs(z) < 85 then
                     count = count + 1
                     
-                    m = Instance.new("Frame")
+                    local m = Instance.new("Frame")
                     m.Name = "PlayerMarker"
                     m.Size = UDim2.new(0, 8, 0, 8)
                     m.Position = UDim2.new(0.5, x - 4, 0.5, z - 4)
@@ -5966,12 +6418,17 @@ function updateMap()
                     m.ZIndex = 8
                     m.Parent = map
                     
-                    mc = Instance.new("UICorner")
+                    local mc = Instance.new("UICorner")
                     mc.CornerRadius = UDim.new(1, 0)
                     mc.Parent = m
                     
+                    if config.highlightEnemies and p.Team ~= LocalPlayer.Team and p.Team then
+                        m.BorderSizePixel = 2
+                        m.BorderColor3 = Color3.fromRGB(255, 0, 0)
+                    end
+                    
                     if config.showNames then
-                        n = Instance.new("TextLabel")
+                        local n = Instance.new("TextLabel")
                         n.Name = "NameLabel"
                         n.Text = p.Name
                         n.Size = UDim2.new(0, 100, 0, 15)
@@ -5984,13 +6441,13 @@ function updateMap()
                         n.ZIndex = 9
                         n.Parent = map
                         
-                        nc = Instance.new("UICorner")
+                        local nc = Instance.new("UICorner")
                         nc.CornerRadius = UDim.new(0, 3)
                         nc.Parent = n
                     end
                     
                     if config.showDistance then
-                        d = Instance.new("TextLabel")
+                        local d = Instance.new("TextLabel")
                         d.Name = "DistLabel"
                         d.Text = math.floor((op - pos).Magnitude) .. "m"
                         d.Size = UDim2.new(0, 60, 0, 12)
@@ -6005,10 +6462,10 @@ function updateMap()
                     end
                     
                     if config.showHealth then
-                        h = oc:FindFirstChildOfClass("Humanoid")
+                        local h = oc:FindFirstChildOfClass("Humanoid")
                         if h then
-                            hp = h.Health / h.MaxHealth
-                            hb = Instance.new("Frame")
+                            local hp = h.Health / h.MaxHealth
+                            local hb = Instance.new("Frame")
                             hb.Name = "HealthBar"
                             hb.Size = UDim2.new(0, 20, 0, 3)
                             hb.Position = UDim2.new(0.5, x - 10, 0.5, z - 8)
@@ -6017,7 +6474,7 @@ function updateMap()
                             hb.ZIndex = 8
                             hb.Parent = map
                             
-                            hf = Instance.new("Frame")
+                            local hf = Instance.new("Frame")
                             hf.Size = UDim2.new(hp, 0, 1, 0)
                             hf.BackgroundColor3 = Color3.fromHSV(hp * 0.3, 1, 1)
                             hf.BorderSizePixel = 0
@@ -6026,8 +6483,8 @@ function updateMap()
                     end
                     
                     if config.showViewCones then
-                        _, oy, _ = oc.HumanoidRootPart.CFrame:ToEulerAnglesXYZ()
-                        v = Instance.new("ImageLabel")
+                        local _, oy, _ = oc.HumanoidRootPart.CFrame:ToEulerAnglesXYZ()
+                        local v = Instance.new("ImageLabel")
                         v.Name = "ViewCone"
                         v.Size = UDim2.new(0, 30, 0, 30)
                         v.Position = UDim2.new(0.5, x - 15, 0.5, z - 15)
@@ -6044,7 +6501,7 @@ function updateMap()
         end
     end
     
-    info = state.frame:FindFirstChild("InfoBar"):FindFirstChild("InfoText")
+    local info = state.frame:FindFirstChild("InfoBar"):FindFirstChild("InfoText")
     if info then
         info.Text = string.format("Players: %d | Zoom: %d%%", count, config.zoom)
     end
@@ -6091,7 +6548,7 @@ ESPTab:AddToggle({Name = "Show Health", Default = true, Callback = function(v) c
 ESPTab:AddToggle({Name = "Show Cones", Default = false, Callback = function(v) config.showViewCones = v end})
 
 ESPTab:AddButton({Name = "Set Waypoint", Callback = function()
-    c = LocalPlayer.Character
+    local c = LocalPlayer.Character
     if c and c:FindFirstChild("HumanoidRootPart") then
         state.waypoint = c.HumanoidRootPart.Position
         config.trackWaypoint = true
@@ -6103,36 +6560,42 @@ ESPTab:AddButton({Name = "Clear Waypoint", Callback = function()
     config.trackWaypoint = false
 end})
 
+
 VehicleModsTab2:AddSection({
     Name = "Headlight Color"
 })
 
-headlightColorEnabled = false
-selectedHeadlightColor = Color3.fromRGB(255, 255, 255)
-headlightBrightness = 100
-rainbowHeadlights = false
-rainbowSpeed = 1
+local headlightColorEnabled = false
+local selectedHeadlightColor = Color3.fromRGB(255, 255, 255)
+local headlightBrightness = 100
+local rainbowHeadlights = false
+local rainbowSpeed = 1
 
-function applyLightSettings(spotlight)
+
+local function applyLightSettings(spotlight)
     if not spotlight or not spotlight:IsA("SpotLight") then return end
     
     if rainbowHeadlights then
-        hue = (tick() * rainbowSpeed) % 1
+        
+        local hue = (tick() * rainbowSpeed) % 1
         spotlight.Color = Color3.fromHSV(hue, 1, 1)
     else
         spotlight.Color = selectedHeadlightColor
     end
+    
     
     spotlight.Brightness = headlightBrightness / 50
     spotlight.Range = 50 
     spotlight.Angle = 45  
 end
 
-function getAllHeadlights()
-    headlights = {}
+-- Ffind head
+local function getAllHeadlights()
+    local headlights = {}
     
-    car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
+    local car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
     if not car then 
+        -- altnames
         for _, vehicle in pairs(workspace.Vehicles:GetChildren()) do
             if vehicle.Name:find(LocalPlayer.Name) then
                 car = vehicle
@@ -6142,25 +6605,33 @@ function getAllHeadlights()
         if not car then return headlights end
     end
 
-    body = car:FindFirstChild("Body")
+    
+    -- m1
+    local body = car:FindFirstChild("Body")
     if body then
-        headlightsFolder = body:FindFirstChild("Headlights")
+        
+        local headlightsFolder = body:FindFirstChild("Headlights")
         if headlightsFolder then
-            headlightsSubFolder = headlightsFolder:FindFirstChild("Headlights")
+            
+            local headlightsSubFolder = headlightsFolder:FindFirstChild("Headlights")
             if headlightsSubFolder then
-                leftHeadlight = headlightsSubFolder:FindFirstChild("Left")
-                rightHeadlight = headlightsSubFolder:FindFirstChild("Right")
+                
+                -- find lr
+                local leftHeadlight = headlightsSubFolder:FindFirstChild("Left")
+                local rightHeadlight = headlightsSubFolder:FindFirstChild("Right")
                 
                 if leftHeadlight then
-                    spotlight = leftHeadlight:FindFirstChild("Spotlight") or leftHeadlight:FindFirstChildWhichIsA("SpotLight")
+                    local spotlight = leftHeadlight:FindFirstChild("Spotlight") or leftHeadlight:FindFirstChildWhichIsA("SpotLight")
                     if spotlight then
+                        
                         table.insert(headlights, spotlight)
                     end
                 end
                 
                 if rightHeadlight then
-                    spotlight = rightHeadlight:FindFirstChild("Spotlight") or rightHeadlight:FindFirstChildWhichIsA("SpotLight")
+                    local spotlight = rightHeadlight:FindFirstChild("Spotlight") or rightHeadlight:FindFirstChildWhichIsA("SpotLight")
                     if spotlight then
+                        
                         table.insert(headlights, spotlight)
                     end
                 end
@@ -6168,21 +6639,24 @@ function getAllHeadlights()
         end
     end
     
+    -- m2
     if #headlights == 0 then
-        for _, part in pairs(car:GetDescendants()) do
-            if part:IsA("SpotLight") then
-                table.insert(headlights, part)
-            end
+    for _, part in pairs(car:GetDescendants()) do
+        if part:IsA("SpotLight") then
+            table.insert(headlights, part)
         end
     end
-
-    return headlights
 end
 
-function updateHeadlights()
+return headlights
+end
+
+
+-- colorchange
+local function updateHeadlights()
     if not headlightColorEnabled then return end
     
-    headlights = getAllHeadlights()
+    local headlights = getAllHeadlights()
     
     if #headlights == 0 then
         return
@@ -6193,13 +6667,14 @@ function updateHeadlights()
     end
 end
 
+
 VehicleModsTab2:AddToggle({
     Name = "Custom Headlight Color",
     Default = false,
     Callback = function(val)
         headlightColorEnabled = val
         if val then
-            task.wait(0.5)
+            task.wait(0.5) --wait
             updateHeadlights()
             OrionLib:MakeNotification({
                 Name = "Headlights",
@@ -6207,7 +6682,8 @@ VehicleModsTab2:AddToggle({
                 Time = 3
             })
         else
-            headlights = getAllHeadlights()
+            -- Back to stand
+            local headlights = getAllHeadlights()
             for _, spotlight in pairs(headlights) do
                 if spotlight:IsA("SpotLight") then
                     spotlight.Color = Color3.fromRGB(255, 255, 255)
@@ -6217,6 +6693,7 @@ VehicleModsTab2:AddToggle({
         end
     end
 })
+
 
 VehicleModsTab2:AddColorpicker({
     Name = "Headlight Color",
@@ -6229,6 +6706,7 @@ VehicleModsTab2:AddColorpicker({
         end
     end
 })
+
 
 VehicleModsTab2:AddSlider({
     Name = "Headlight Brightness",
@@ -6247,6 +6725,7 @@ VehicleModsTab2:AddSlider({
     end
 })
 
+
 VehicleModsTab2:AddToggle({
     Name = "Rainbow Headlights",
     Default = false,
@@ -6256,12 +6735,13 @@ VehicleModsTab2:AddToggle({
             task.spawn(function()
                 while rainbowHeadlights and headlightColorEnabled do
                     updateHeadlights()
-                    task.wait(0.05)
+                    task.wait(0.05) -- fast update smoothen
                 end
             end)
         end
     end
 })
+
 
 VehicleModsTab2:AddSlider({
     Name = "Rainbow Speed",
@@ -6281,7 +6761,7 @@ VehicleModsTab2:AddSection({
     Name = "Underglow Lights"
 })
 
-UnderglowSettings = {
+local UnderglowSettings = {
     Enabled = false,
     Color = Color3.fromRGB(0, 255, 255),
     Rainbow = false,
@@ -6289,18 +6769,19 @@ UnderglowSettings = {
     Range = 20
 }
 
-underglowParts = {}
+local underglowParts = {}
 
-function createUnderglow()
+local function createUnderglow()
+    -- clear old
     for _, part in pairs(underglowParts) do
         if part then part:Destroy() end
     end
     underglowParts = {}
     
-    car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
+    local car = workspace.Vehicles:FindFirstChild(LocalPlayer.Name)
     if not car then return end
     
-    positions = {
+    local positions = {
         Vector3.new(2, -1, 3),   
         Vector3.new(-2, -1, 3),  
         Vector3.new(2, -1, -3),  
@@ -6308,7 +6789,7 @@ function createUnderglow()
     }
     
     for _, offset in pairs(positions) do
-        light = Instance.new("Part")
+        local light = Instance.new("Part")
         light.Name = "UnderglowLight"
         light.Size = Vector3.new(0.5, 0.5, 0.5)
         light.Transparency = 1
@@ -6316,12 +6797,12 @@ function createUnderglow()
         light.Anchored = false
         light.CFrame = car:GetPivot() * CFrame.new(offset)
         
-        weld = Instance.new("WeldConstraint")
+        local weld = Instance.new("WeldConstraint")
         weld.Part0 = light
         weld.Part1 = car.PrimaryPart or car:FindFirstChild("DriveSeat")
         weld.Parent = light
         
-        pointLight = Instance.new("PointLight")
+        local pointLight = Instance.new("PointLight")
         pointLight.Color = UnderglowSettings.Color
         pointLight.Brightness = UnderglowSettings.Brightness
         pointLight.Range = UnderglowSettings.Range
@@ -6356,7 +6837,7 @@ VehicleModsTab2:AddColorpicker({
         UnderglowSettings.Rainbow = false
         for _, part in pairs(underglowParts) do
             if part then
-                light = part:FindFirstChildOfClass("PointLight")
+                local light = part:FindFirstChildOfClass("PointLight")
                 if light then light.Color = color end
             end
         end
@@ -6371,11 +6852,11 @@ VehicleModsTab2:AddToggle({
         if val then
             task.spawn(function()
                 while UnderglowSettings.Rainbow and UnderglowSettings.Enabled do
-                    hue = (tick() % 5) / 5
-                    color = Color3.fromHSV(hue, 1, 1)
+                    local hue = (tick() % 5) / 5
+                    local color = Color3.fromHSV(hue, 1, 1)
                     for _, part in pairs(underglowParts) do
                         if part then
-                            light = part:FindFirstChildOfClass("PointLight")
+                            local light = part:FindFirstChildOfClass("PointLight")
                             if light then light.Color = color end
                         end
                     end
@@ -6386,7 +6867,17 @@ VehicleModsTab2:AddToggle({
     end
 })
 
-state = {
+-- REMOVED 'local' from service variables to reduce local count
+Players = game:GetService("Players")
+RunService = game:GetService("RunService")
+Workspace = game:GetService("Workspace")
+UserInputService = game:GetService("UserInputService")
+ContextActionService = game:GetService("ContextActionService")
+
+local player = Players.LocalPlayer
+
+-- KEPT your state table as is (just 1 local variable)
+local state = {
     inVehicle = false,
     engineActive = false,
     hornActive = true,
@@ -6408,7 +6899,9 @@ state = {
     lastHornTime = 0
 }
 
-AllSounds = {
+-- COMBINED all sound tables into one (was 4 tables, now 1)
+local AllSounds = {
+    -- Engine sounds
     ["Truck Engine"] = "rbxassetid://85098441998081",
     ["Sports Car"] = "rbxassetid://8916893206",
     ["V8 Muscle"] = "rbxassetid://74832102079275",
@@ -6418,6 +6911,7 @@ AllSounds = {
     ["Race Car"] = "rbxassetid://81491848767534",
     ["Monster Truck"] = "rbxassetid://1065439616",
     
+    -- Horn sounds  
     ["Classic Horn"] = "rbxassetid://5945905639",
     ["Truck Horn"] = "rbxassetid://86051083118541",
     ["Police Siren"] = "rbxassetid://129944954638234",
@@ -6426,6 +6920,7 @@ AllSounds = {
     ["Fancy Horn"] = "rbxassetid://9113887600",
     ["Goofy Horn"] = "rbxassetid://110741466920489",
     
+    -- Engine presets (store as strings for easy lookup)
     ["Truck Engine_preset"] = "0.4|2.5|Deep Diesel",
     ["Sports Car_preset"] = "1.6|1.8|High Rev Sports",
     ["V8 Muscle_preset"] = "0.8|2.2|Powerful V8",
@@ -6435,6 +6930,7 @@ AllSounds = {
     ["Race Car_preset"] = "1.8|2.0|Extreme Racing",
     ["Monster Truck_preset"] = "0.3|3.0|Heavy Monster",
     
+    -- Horn presets
     ["Classic Horn_preset"] = "1.0|1.0|Standard Car Horn",
     ["Truck Horn_preset"] = "0.7|2.5|Loud Air Horn",
     ["Police Siren_preset"] = "1.0|2.0|Emergency Siren",
@@ -6443,14 +6939,14 @@ AllSounds = {
     ["Fancy Horn_preset"] = "1.1|1.2|Elegant Tone"
 }
 
-function detectVehicle()
-    character = LocalPlayer.Character
+local function detectVehicle()
+    local character = player.Character
     if not character then return false end
 
-    humanoid = character:FindFirstChild("Humanoid")
+    local humanoid = character:FindFirstChild("Humanoid")
     if not humanoid then return false end
 
-    seat = humanoid.SeatPart
+    local seat = humanoid.SeatPart
     if not seat then
         state.seat = nil
         state.vehicle = nil
@@ -6462,7 +6958,7 @@ function detectVehicle()
     return true
 end
 
-function removeCustomSound()
+local function removeCustomSound()
     if state.customSound then
         state.customSound:Stop()
         state.customSound:Destroy()
@@ -6470,15 +6966,16 @@ function removeCustomSound()
     end
 end
 
-function spawnEngineSound()
+local function spawnEngineSound()
     removeCustomSound()
 
-    soundAsset = AllSounds[state.engineType]
+    -- Use AllSounds table instead of engineSounds
+    local soundAsset = AllSounds[state.engineType]
     if not soundAsset then
         soundAsset = AllSounds["Truck Engine"]
     end
 
-    newSound = Instance.new("Sound")
+    local newSound = Instance.new("Sound")
     newSound.Name = "CustomEngineSound"
     newSound.SoundId = soundAsset
     newSound.Volume = 0.5
@@ -6497,20 +6994,20 @@ function spawnEngineSound()
         newSound.Parent = Workspace
     end
 
-    soundReady = false
-    loadConnection
+    local soundReady = false
+    local loadConnection
     loadConnection = newSound.Loaded:Connect(function()
         soundReady = true
         loadConnection:Disconnect()
     end)
 
-    timeout = tick()
+    local timeout = tick()
     while not soundReady and tick() - timeout < 3 do
         task.wait(0.1)
     end
 
     if soundReady then
-        worked = pcall(function()
+        local worked = pcall(function()
             newSound:Play()
         end)
 
@@ -6524,34 +7021,34 @@ function spawnEngineSound()
     return false
 end
 
-function fetchVehicleMetrics()
+local function fetchVehicleMetrics()
     if not state.seat then return 0, 0, 0 end
 
-    throttle = 0
-    speed = 0
-    rpm = 0
+    local throttle = 0
+    local speed = 0
+    local rpm = 0
 
     if state.seat:IsA("VehicleSeat") then
-        velocityVector = state.seat.Velocity
-        forwardVector = state.seat.CFrame.LookVector
-        forwardVelocity = velocityVector:Dot(forwardVector)
+        local velocityVector = state.seat.Velocity
+        local forwardVector = state.seat.CFrame.LookVector
+        local forwardVelocity = velocityVector:Dot(forwardVector)
         speed = math.abs(forwardVelocity) * 3.6
 
         throttle = math.abs(state.seat.ThrottleFloat)
 
-        maxSpeed = 150
-        speedPercentage = math.min(speed / maxSpeed, 1)
+        local maxSpeed = 150
+        local speedPercentage = math.min(speed / maxSpeed, 1)
 
-        idleRPM = 800
-        maxRPM = 7000
+        local idleRPM = 800
+        local maxRPM = 7000
         rpm = idleRPM + (speedPercentage * (maxRPM - idleRPM))
 
         if throttle > 0.1 then
             rpm = rpm * (1 + (throttle * 0.5))
         end
 
-        currentTime = tick()
-        speedChange = speed - state.previousSpeed
+        local currentTime = tick()
+        local speedChange = speed - state.previousSpeed
         state.currentAcceleration = speedChange / 0.1
         state.previousSpeed = speed
 
@@ -6561,7 +7058,7 @@ function fetchVehicleMetrics()
             rpm = rpm * 1.15
         end
     else
-        velocityMagnitude = state.seat.Velocity.Magnitude
+        local velocityMagnitude = state.seat.Velocity.Magnitude
         speed = velocityMagnitude * 3.6
         throttle = 0
         rpm = 800 + (speed / 150 * 6200)
@@ -6572,24 +7069,24 @@ function fetchVehicleMetrics()
     return throttle, math.floor(speed), rpm
 end
 
-function refreshEngineSound()
+local function refreshEngineSound()
     if not state.customSound or not state.engineActive then return end
 
-    throttle, speed, rpm = fetchVehicleMetrics()
+    local throttle, speed, rpm = fetchVehicleMetrics()
     state.throttleInput = throttle
     state.currentSpeed = speed
     state.engineRPM = rpm
 
-    minPitch = state.enginePitch * 0.5
-    maxPitch = state.enginePitch * 2.0
+    local minPitch = state.enginePitch * 0.5
+    local maxPitch = state.enginePitch * 2.0
 
-    rpmNormalized = (rpm - 800) / (8000 - 800)
-    targetPitch = minPitch + (rpmNormalized * (maxPitch - minPitch))
+    local rpmNormalized = (rpm - 800) / (8000 - 800)
+    local targetPitch = minPitch + (rpmNormalized * (maxPitch - minPitch))
 
-    minVolume = state.engineVolume * 0.3
-    maxVolume = state.engineVolume * 1.5
+    local minVolume = state.engineVolume * 0.3
+    local maxVolume = state.engineVolume * 1.5
 
-    targetVolume = minVolume + (rpmNormalized * (maxVolume - minVolume))
+    local targetVolume = minVolume + (rpmNormalized * (maxVolume - minVolume))
 
     if throttle > 0.3 then
         targetVolume = targetVolume * (1 + (throttle * 0.3))
@@ -6611,18 +7108,18 @@ function refreshEngineSound()
     targetPitch = math.clamp(targetPitch, 0.2, 3.0)
     targetVolume = math.clamp(targetVolume, 0.2, 4.0)
 
-    smoothFactor = 0.15
-    currentPitch = state.customSound.Pitch
-    currentVolume = state.customSound.Volume
+    local smoothFactor = 0.15
+    local currentPitch = state.customSound.Pitch
+    local currentVolume = state.customSound.Volume
 
-    newPitch = currentPitch + (targetPitch - currentPitch) * smoothFactor
-    newVolume = currentVolume + (targetVolume - currentVolume) * smoothFactor
+    local newPitch = currentPitch + (targetPitch - currentPitch) * smoothFactor
+    local newVolume = currentVolume + (targetVolume - currentVolume) * smoothFactor
 
     state.customSound.Pitch = newPitch
     state.customSound.Volume = newVolume
 end
 
-function initializeSoundSystem()
+local function initializeSoundSystem()
     if state.engineLoop then
         state.engineLoop:Disconnect()
         state.engineLoop = nil
@@ -6630,7 +7127,7 @@ function initializeSoundSystem()
 
     removeCustomSound()
 
-    success = spawnEngineSound()
+    local success = spawnEngineSound()
     if success then
         state.engineLoop = RunService.Heartbeat:Connect(function()
             refreshEngineSound()
@@ -6646,9 +7143,9 @@ function initializeSoundSystem()
     end
 end
 
-function monitorVehicleState()
+local function monitorVehicleState()
     while true do
-        wasInVehicle = state.inVehicle
+        local wasInVehicle = state.inVehicle
         state.inVehicle = detectVehicle()
 
         if state.inVehicle ~= wasInVehicle then
@@ -6675,7 +7172,7 @@ function monitorVehicleState()
     end
 end
 
-function toggleEngineState()
+local function toggleEngineState()
     if not state.inVehicle then
         OrionLib:MakeNotification({
             Name = "Engine",
@@ -6688,7 +7185,7 @@ function toggleEngineState()
     state.engineActive = not state.engineActive
 
     if state.engineActive then
-        success = initializeSoundSystem()
+        local success = initializeSoundSystem()
         if success then
             OrionLib:MakeNotification({
                 Name = "Engine",
@@ -6715,19 +7212,20 @@ function toggleEngineState()
     return true
 end
 
-function activateHorn()
+local function activateHorn()
     if not state.hornActive then return end
     if not state.inVehicle then return end
     if tick() - state.lastHornTime < 0.5 then return end
 
     state.lastHornTime = tick()
 
-    hornSoundAsset = AllSounds[state.hornType]
+    -- Use AllSounds table instead of hornSounds
+    local hornSoundAsset = AllSounds[state.hornType]
     if not hornSoundAsset then
         hornSoundAsset = AllSounds["Classic Horn"]
     end
 
-    horn = Instance.new("Sound")
+    local horn = Instance.new("Sound")
     horn.SoundId = hornSoundAsset
     horn.Volume = state.hornVolume
     horn.Pitch = state.hornPitch
@@ -6739,7 +7237,7 @@ function activateHorn()
     horn:Destroy()
 end
 
-function previewHorn()
+local function previewHorn()
     if not state.inVehicle then
         OrionLib:MakeNotification({
             Name = "Horn",
@@ -6752,10 +7250,11 @@ function previewHorn()
     activateHorn()
 end
 
-function applyHornPreset()
-    presetString = AllSounds[state.hornType .. "_preset"]
+local function applyHornPreset()
+    -- Get preset from AllSounds table
+    local presetString = AllSounds[state.hornType .. "_preset"]
     if presetString then
-        parts = {}
+        local parts = {}
         for part in presetString:gmatch("[^|]+") do
             table.insert(parts, part)
         end
@@ -6773,8 +7272,7 @@ function applyHornPreset()
     end
 end
 
-function setupHornControls()
-    ContextActionService = game:GetService("ContextActionService")
+local function setupHornControls()
     ContextActionService:BindActionAtPriority(
         "HornOverride",
         function(actionName, inputState)
@@ -6789,7 +7287,7 @@ function setupHornControls()
         Enum.KeyCode.H
     )
 
-    UIS.InputBegan:Connect(function(input, processed)
+    UserInputService.InputBegan:Connect(function(input, processed)
         if processed then return end
         if input.KeyCode == Enum.KeyCode.H then
             activateHorn()
@@ -6797,7 +7295,7 @@ function setupHornControls()
     end)
 end
 
-function previewEngineSounds()
+local function previewEngineSounds()
     if not state.engineActive or not state.customSound then
         OrionLib:MakeNotification({
             Name = "Preview",
@@ -6813,8 +7311,8 @@ function previewEngineSounds()
         Time = 3
     })
 
-    originalPitch = state.customSound.Pitch
-    originalVolume = state.customSound.Volume
+    local originalPitch = state.customSound.Pitch
+    local originalVolume = state.customSound.Volume
 
     state.customSound.Pitch = state.enginePitch * 0.6
     state.customSound.Volume = state.engineVolume * 0.3
@@ -6844,10 +7342,11 @@ function previewEngineSounds()
     state.customSound.Volume = originalVolume
 end
 
-function applyPresetConfig()
-    presetString = AllSounds[state.engineType .. "_preset"]
+local function applyPresetConfig()
+    -- Get preset from AllSounds table
+    local presetString = AllSounds[state.engineType .. "_preset"]
     if presetString then
-        parts = {}
+        local parts = {}
         for part in presetString:gmatch("[^|]+") do
             table.insert(parts, part)
         end
@@ -6870,16 +7369,17 @@ function applyPresetConfig()
     end
 end
 
+
 VehicleModsTab2:AddSection({
     Name = "Controls"
 })
 
-engineToggle = VehicleModsTab2:AddToggle({
+local engineToggle = VehicleModsTab2:AddToggle({
     Name = "Custom Engine Sound",
     Default = false,
     Callback = function(enabled)
         if enabled then
-            worked = toggleEngineState()
+            local worked = toggleEngineState()
             if not worked then
                 engineToggle:Set(false)
             end
@@ -6894,7 +7394,7 @@ engineToggle = VehicleModsTab2:AddToggle({
     end
 })
 
-engineDropdown = VehicleModsTab2:AddDropdown({
+local engineDropdown = VehicleModsTab2:AddDropdown({
     Name = "Select Engine Type",
     Default = "...",
     Options = {"Truck Engine", "Sports Car", "V8 Muscle", "Motorcycle", "Electric Car", "Classic Car", "Race Car", "Monster Truck"},
@@ -6907,6 +7407,7 @@ engineDropdown = VehicleModsTab2:AddDropdown({
         end
     end
 })
+
 
 VehicleModsTab2:AddSection({
     Name = "Engine Configuration"
@@ -6923,7 +7424,7 @@ VehicleModsTab2:AddSlider({
     Callback = function(value)
         state.enginePitch = value
         if state.engineActive and state.customSound then
-            currentRatio = state.customSound.Pitch / state.enginePitch
+            local currentRatio = state.customSound.Pitch / state.enginePitch
             state.customSound.Pitch = value * currentRatio
         end
     end
@@ -6940,7 +7441,7 @@ VehicleModsTab2:AddSlider({
     Callback = function(value)
         state.engineVolume = value
         if state.engineActive and state.customSound then
-            currentRatio = state.customSound.Volume / state.engineVolume
+            local currentRatio = state.customSound.Volume / state.engineVolume
             state.customSound.Volume = value * currentRatio
         end
     end
@@ -6950,7 +7451,7 @@ VehicleModsTab2:AddSection({
     Name = "Horn Controls"
 })
 
-hornToggle = VehicleModsTab2:AddToggle({
+local hornToggle = VehicleModsTab2:AddToggle({
     Name = "Enable Horn",
     Default = true,
     Callback = function(enabled)
@@ -6976,7 +7477,7 @@ VehicleModsTab2:AddSection({
     Name = "Horn Selection"
 })
 
-hornDropdown = VehicleModsTab2:AddDropdown({
+local hornDropdown = VehicleModsTab2:AddDropdown({
     Name = "Select Horn Type",
     Default = "...",
     Options = {"Classic Horn", "Truck Horn", "Police Siren", "Train Horn", "Boat Horn", "Fancy Horn", "Goofy Horn"},
@@ -7019,6 +7520,7 @@ VehicleModsTab2:AddSlider({
 setupHornControls()
 task.spawn(monitorVehicleState)
 
+
 ohString1 = "CHRISTMAS25"
 
 success, errorMessage = pcall(function()
@@ -7026,14 +7528,14 @@ success, errorMessage = pcall(function()
 end)
 
 if not success then
-    
-end
 
+end
 OrionLib:Init()
 
-OrionLib:MakeNotification({
-    Name = "Heavenly",
-    Content = "Join Discord! discord.gg/MERzRQ2UHn",
-    Image = "rbxassetid://6035067873",
-    Time = 16
-})
+    
+    OrionLib:MakeNotification({
+        Name = "Heavenly",
+        Content = "Join Discord! discord.gg/MERzRQ2UHn",
+        Image = "rbxassetid://6035067873",
+        Time = 16
+    })
