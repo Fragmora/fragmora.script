@@ -450,7 +450,7 @@ local function CreateBulletTracer(startPos, endPos)
         table.insert(ActiveTracers, impact)
     end
 
-    table.insert(ActiveTracers.beam)
+    table.insert(ActiveTracers, beam)
 
     if BulletTracerSettings.FadeOut then
         task.spawn(function()
@@ -503,7 +503,7 @@ local function HookBulletTracers()
         if args[2] and args[3] then
             local char = LocalPlayer.Character
             if char then
-                local gun = getCurrentGun(char)
+                local gun = getcGun(char)
                 if gun and gun:FindFirstChild("Handle") then
                     local startPos = gun.Handle.Position
                     local endPos = args[2]
@@ -637,7 +637,7 @@ local function HookHitMarkers()
 
             local lastHealth = humanoid.Health
 
-            humanoid:GetPropertyChangedSignal("Health"):Connnect(function()
+            humanoid:GetPropertyChangedSignal("Health"):Connect(function()
                 local currentHealth = humanoid.Health
                 if currentHealth < lastHealth then
                     local damage = lastHealth - currentHealth
@@ -655,7 +655,7 @@ local function HookHitMarkers()
             end)
         end
 
-        if plaer.Character then
+        if player.Character then
             OnCharacter(player.Character)
         end
 
@@ -665,6 +665,7 @@ local function HookHitMarkers()
 
         Players.PlayerAdded:Connect(MonitorPlayer)
     end
+end
 
 
 GunModsTab:AddSection({
@@ -2954,7 +2955,7 @@ VehicleModsTab:AddButton({
             Time = 2
         })
     else
-        OrionLib:MakeNotificaiton({
+        OrionLib:MakeNotification({
             Name = "Not in a Vehicle",
             Content = "You're not currently sitting in a Vehicle",
             Time = 2
