@@ -626,7 +626,7 @@ local function ShowHitMarker(isHeadshot, damage, isKill)
     end)
 end
 
-local functuin HookHitMarkers()
+local function HookHitMarkers()
 
     local function MonitorPlayer(player)
         if player == LocalPlayer then return end
@@ -7538,4 +7538,3 @@ OrionLib:Init()
         Image = "rbxassetid://6035067873",
         Time = 16
     })
-
