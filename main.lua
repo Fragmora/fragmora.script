@@ -1,4 +1,3 @@
-
 local Settings = {
     FileName = "HeavenlyEHcfg.txt"
 }
@@ -7539,3 +7538,4 @@ OrionLib:Init()
         Image = "rbxassetid://6035067873",
         Time = 16
     })
+
