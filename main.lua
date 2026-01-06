@@ -1,6 +1,5 @@
-local HttpService = game:GetService("HttpService")
+
 local OrionLibScript = HttpService:GetAsync("https://raw.githubusercontent.com/Fragmora/fragmora.script/refs/heads/main/orion.lua")
-local OrionLib = loadstring(OrionLibScript)()
 
 Window = OrionLib:MakeWindow({
     Name = ".gg/MERzRQ2UHn | Heavenly | Emergency Hamburg",
