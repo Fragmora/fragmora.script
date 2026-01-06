@@ -1767,7 +1767,7 @@ end)
 
 ESPTab:AddToggle({
     Name = "Enable Chams",
-    Default = GetSetting("EnableChams", val),
+    Default = GetSetting("EnableChams", false),
     Callback = function(val)
         ChamsSettings.Enabled = val
         SaveSetting("EnableChams", val)
