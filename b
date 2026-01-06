@@ -1,3 +1,4 @@
+
 local Settings = {
     FileName = "HeavenlyEHcfg.txt"
 }
@@ -1131,23 +1132,6 @@ bCtM = function()
     end
     return false
 end
-
--- Left-Click Teleport (from first script)
-local teleportActive = false
-local mouse = LocalPlayer:GetMouse()
-
--- Add this to your Teleport tab
-tab3:CreateToggle({
-	Name = "Left-Click Teleport",
-	CurrentValue = false,
-	Callback = function(v) teleportActive = v end,
-})
-
-mouse.Button1Down:Connect(function()
-	if teleportActive and mouse.Hit and LocalPlayer.Character then
-		LocalPlayer.Character:MoveTo(mouse.Hit.Position + Vector3.new(0, 3, 0))
-	end
-end)
 
 enterVehicle = function()
     vehicle = VehiclesFolder:FindFirstChild(LocalPlayer.Name)
