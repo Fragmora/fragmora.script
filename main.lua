@@ -1,5 +1,41 @@
 OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/Fragmora/fragmora.script/refs/heads/main/orion.lua", true))()
 
+-- ADD THIS AT THE VERY TOP after loading OrionLib
+local Settings = {}
+
+-- FIX 1: Create missing settings functions
+function GetSetting(key, default)
+    return OrionLib.Settings[key] or default or false
+end
+
+function SaveSetting(key, value)
+    OrionLib.Settings[key] = value
+    OrionLib:SaveSettings()
+end
+
+-- FIX 2: Create global utilities table
+local Utilities = {
+    Connections = {},
+    Objects = {},
+    Debounces = {}
+}
+
+function Utilities:Cleanup()
+    for _, connection in pairs(self.Connections) do
+        if connection then
+            connection:Disconnect()
+        end
+    end
+    self.Connections = {}
+    
+    for _, object in pairs(self.Objects) do
+        if object and object:IsA("Instance") then
+            object:Destroy()
+        end
+    end
+    self.Objects = {}
+end
+
 Window = OrionLib:MakeWindow({
     Name = ".gg/MERzRQ2UHn | Heavenly | Emergency Hamburg",
     HidePremium = false,
