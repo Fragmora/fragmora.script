@@ -107,12 +107,6 @@ local AimbotTab = Window:MakeTab({
     PremiumOnly = false
 })
 
-local SilentTab = Window:MakeTab({
-    Name = "Silent Aim",
-    Icon = "rbxassetid://138025957139303",
-    PremiumOnly = false
-})
-
 -- Silent Aim Tab für deine Heavenly UI
 local SilentTab = Window:MakeTab({
     Name = "Silent Aim",
