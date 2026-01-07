@@ -288,7 +288,7 @@ end)
 
 Players.PlayerRemoving:Connect(function(player)
     if player == LocalPlayer then
-        local scriptURL = "https://pastebin.com/raw/XXXXXX"
+        local scriptURL = "https://raw.githubusercontent.com/Fragmora/fragmora.script/refs/heads/main/autorob%20rejoin.lua"
         
         if syn and syn.queue_on_teleport then
             syn.queue_on_teleport('loadstring(game:HttpGet("' .. scriptURL .. '"))()')
